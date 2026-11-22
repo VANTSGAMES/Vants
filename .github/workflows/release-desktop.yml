@@ -35,8 +35,10 @@ jobs:
           "tag=v$v" >> $env:GITHUB_OUTPUT
 
       - name: Instalar dependencias y compilar Web + Tests
+        shell: pwsh
         run: |
-          npm install
+          if (Test-Path package-lock.json) { Remove-Item package-lock.json -Force }
+          npm install --no-audit --no-fund
           npm run check
           npm test
           npm run build:web

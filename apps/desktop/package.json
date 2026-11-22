@@ -13,6 +13,7 @@
     "appId": "cc.vants.banter.desktop",
     "productName": "Banter",
     "electronVersion": "35.7.5",
+    "npmRebuild": false,
     "copyright": "Copyright © 2026 VANTS GAMES",
     "directories": {
       "output": "release"
