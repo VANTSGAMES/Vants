@@ -40,7 +40,7 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
     stripePriceEnv: null,
     perks: [
       "Salas de voz, chat, auto-updates (PC y Android) y comunidad multiplataforma",
-      "Captura local Razer Cortex + recorte 9:16 en tu PC (subida manual a YouTube)",
+      "App VANTS Clipper PC: recorte local 9:16 gratis en tu PC (subida manual)",
       "Subida de archivos hasta 25 MB y streams 720p 30fps",
       "Sostenido por anuncios gaming NitroPay (Web/PC) y AdMob (Android)",
     ],
@@ -50,7 +50,7 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
   nitro: {
     id: "nitro",
     name: "Banter Nitro",
-    tagline: "0 anuncios + personalización + 3 YouTube Shorts y 3 vidIQ al día",
+    tagline: "0 anuncios + personalización + 3 YouTube Shorts y 3 Créditos VANTS IA al día",
     priceMonthlyUsd: 4.99,
     adFree: true,
     maxUploadMb: 150,
@@ -61,7 +61,7 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
     stripePriceEnv: "STRIPE_PRICE_BANTER_NITRO",
     perks: [
       "Experiencia 100 % sin anuncios en Web, Escritorio y Android",
-      "Auto-clips Razer Cortex → 3 YouTube Shorts/día + 3 optimizaciones vidIQ/día",
+      "VANTS Clipper PC → 3 YouTube Shorts/día + 3 Créditos VANTS IA/día",
       "Marcos animados de avatar (Crimson y Cyber Gold) + banners HD",
       "Insignia NITRO en salas y chats + subidas hasta 150 MB y 1080p 60fps",
     ],
@@ -71,7 +71,7 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
   nitro_plus: {
     id: "nitro_plus",
     name: "Banter Nitro+",
-    tagline: "Personalización total, 4K60 y 5 YouTube Shorts + 5 vidIQ al día",
+    tagline: "Personalización total, 4K60 y 5 YouTube Shorts + 5 Créditos VANTS IA al día",
     priceMonthlyUsd: 9.99,
     adFree: true,
     maxUploadMb: 500,
@@ -82,7 +82,7 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
     stripePriceEnv: "STRIPE_PRICE_BANTER_NITRO_PLUS",
     perks: [
       "Todo lo incluido en Banter Nitro (0 anuncios en todas las plataformas)",
-      "Auto-clips Razer Cortex → 5 YouTube Shorts/día + 5 vidIQ/día + aviso en Discord",
+      "VANTS Clipper PC → 5 YouTube Shorts/día + 5 Créditos VANTS IA/día + Discord",
       "Marco exclusivo Holo Prism + banner animado Aurora Mesh + color libre",
       "2 Boosts mensuales, subidas hasta 500 MB y streaming 4K 60fps",
     ],

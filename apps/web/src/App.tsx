@@ -257,18 +257,18 @@ export function App() {
         <section className="card">
           <div className="card__head">
             <div>
-              <span className="eyebrow">Captura automática · Razer Cortex → YouTube Shorts</span>
-              <h2>Clips automáticos con cupo diario por membresía</h2>
+              <span className="eyebrow">Captura automática · VANTS Clipper PC → YouTube Shorts</span>
+              <h2>Clips automáticos con Créditos VANTS diarios</h2>
             </div>
             <span className="pill">
               Tu plan ({activePlan.name}):{" "}
               {activePlan.dailyShortsLimit > 0
-                ? `${activePlan.dailyShortsLimit} Shorts/día · ${activePlan.dailyVidiqLimit} vidIQ/día`
+                ? `${activePlan.dailyShortsLimit} Shorts/día · ${activePlan.dailyVidiqLimit} Créditos VANTS/día`
                 : "Recorte local 9:16 gratis (subida manual)"}
             </span>
           </div>
           <p className="muted small">
-            En Windows PC la app detecta tus carpetas de <strong>Razer Cortex</strong> (u OBS/ShadowPlay) y convierte cada jugada a 9:16 en tu propio ordenador sin consumir servidores. Al entrar cada día, tu plan <strong>Nitro / Nitro+</strong> activa tu cupo diario de auto-subida a YouTube Shorts y optimización IA con vidIQ.
+            En Windows PC nuestra app detecta tus carpetas de captura automáticamente y convierte cada jugada a 9:16 en tu propio ordenador sin consumir servidores. Al entrar cada día, tu plan <strong>Nitro / Nitro+</strong> activa tus <strong>Créditos VANTS IA</strong> y tu cupo diario de auto-subida a YouTube Shorts.
           </p>
           <div className="meta-row">
             <a
