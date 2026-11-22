@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import {
   BANTER_PLANS,
+  DEFAULT_BANTER_MOTOR_URL,
   DEFAULT_CUSTOMIZATION,
   detectPlatform,
   platformLabel,
@@ -18,7 +19,11 @@ import { AdSlot } from "./components/AdSlot";
 import { NitroPersonalizer } from "./components/NitroPersonalizer";
 import { resurfacePrivacyConsent } from "./lib/nitropay";
 
-const SHEETS_WEBHOOK_URL = String(import.meta.env.VITE_SHEETS_WEBHOOK_URL || "").trim();
+const SHEETS_WEBHOOK_URL = String(
+  import.meta.env.VITE_SHEETS_WEBHOOK_URL ||
+    import.meta.env.VITE_BANTER_API_URL ||
+    DEFAULT_BANTER_MOTOR_URL,
+).trim();
 const GOOGLE_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1i0t2hRSAO4WT7nKlK3rzgsx4oulmrYmpTqIe6CA5ozU/edit";
 

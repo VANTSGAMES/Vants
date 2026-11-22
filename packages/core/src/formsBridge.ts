@@ -42,32 +42,40 @@ export function validateRequestPayload(p: BanterRequestPayload): string | null {
   return null;
 }
 
+export const DEFAULT_BANTER_MOTOR_URL = "https://vantsbot.vants.workers.dev";
+
 /**
- * Envía el registro o solicitud al Web App de Google Apps Script conectado a la
- * Google Sheet maestra (o devuelve modo local si aún no se configura VITE_SHEETS_WEBHOOK_URL).
+ * Envía el registro o solicitud al motor Cloudflare `vantsbot` (que guarda en D1,
+ * dispara VANTS-BUS -> Discord y sincroniza con Google Sheets) o directamente
+ * al Web App de Google Apps Script si se pasa una URL de script.google.com.
  */
 export async function submitToBanterGoogleSheet(
-  webhookUrl: string,
+  endpointUrl: string,
   payload: BanterSheetWebhookPayload,
 ): Promise<{ ok: boolean; mode: "remote" | "local_preview"; id: string }> {
   const id = (payload.kind === "usuario_registro" ? "BNT-" : "SOL-") + Date.now().toString(36).toUpperCase();
-  const cleanUrl = String(webhookUrl || "").trim();
+  const cleanUrl = String(endpointUrl || "").trim().replace(/\/$/, "");
   if (!cleanUrl) {
     return { ok: true, mode: "local_preview", id };
   }
 
-  const res = await fetch(cleanUrl, {
+  const isAppsScript = /script\.google\.com/i.test(cleanUrl);
+  const targetUrl = isAppsScript
+    ? cleanUrl
+    : cleanUrl + (payload.kind === "usuario_registro" ? "/banter/registro" : "/banter/solicitud");
+
+  const res = await fetch(targetUrl, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    headers: { "Content-Type": isAppsScript ? "text/plain;charset=utf-8" : "application/json" },
     body: JSON.stringify({ ...payload, clientId: id }),
   });
 
   if (!res.ok) {
-    throw new Error(`No se pudo registrar en Google Sheets (HTTP ${res.status}).`);
+    throw new Error(`No se pudo registrar en el motor Banter (HTTP ${res.status}).`);
   }
   const data = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string; error?: string };
   if (data.ok === false) {
-    throw new Error(data.error || "Google Sheets rechazó el envío.");
+    throw new Error(data.error || "El servidor rechazó el envío.");
   }
   return { ok: true, mode: "remote", id: data.id || id };
 }

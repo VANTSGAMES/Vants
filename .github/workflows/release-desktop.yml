@@ -1,0 +1,133 @@
+name: Release Windows + WinGet (VANTSGAMES.Banter)
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versión semántica a publicar (ej. 1.0.0)"
+        required: true
+        default: "1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Resolver versión
+        id: ver
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $v = "${{ inputs.version }}".TrimStart("v")
+          } else {
+            $v = "${{ github.ref_name }}".TrimStart("v")
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+
+      - name: Instalar dependencias y compilar Web + Tests
+        run: |
+          npm install
+          npm run check
+          npm test
+          npm run build:web
+
+      - name: Generar instalador Windows NSIS (Banter-Setup.exe)
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          npm --workspace=@banter/desktop version $v --no-git-tag-version --allow-same-version
+          npm --workspace=@banter/desktop run dist:win
+
+      - name: Calcular SHA-256 y generar manifiestos oficiales WinGet (VANTSGAMES.Banter)
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $tag = "${{ steps.ver.outputs.tag }}"
+          $exe = "apps/desktop/release/Banter-Setup-$v.exe"
+          if (!(Test-Path $exe)) { throw "No se generó $exe" }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToUpper()
+          "$hash  Banter-Setup-$v.exe" | Out-File -Encoding utf8 "apps/desktop/release/SHA256SUMS.txt"
+
+          $outDir = "apps/desktop/release/winget"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $url = "https://github.com/VANTSGAMES/banter/releases/download/$tag/Banter-Setup-$v.exe"
+
+          @"
+          # Created for microsoft/winget-pkgs
+          PackageIdentifier: VANTSGAMES.Banter
+          PackageVersion: $v
+          DefaultLocale: en-US
+          ManifestType: version
+          ManifestVersion: 1.9.0
+          "@ | Out-File -Encoding utf8 "$outDir/VANTSGAMES.Banter.yaml"
+
+          @"
+          PackageIdentifier: VANTSGAMES.Banter
+          PackageVersion: $v
+          InstallerType: nullsoft
+          Scope: user
+          InstallModes:
+            - interactive
+            - silent
+          InstallerSwitches:
+            Silent: /S
+            SilentWithProgress: /S
+          UpgradeBehavior: install
+          Installers:
+            - Architecture: x64
+              InstallerUrl: $url
+              InstallerSha256: $hash
+          ManifestType: installer
+          ManifestVersion: 1.9.0
+          "@ | Out-File -Encoding utf8 "$outDir/VANTSGAMES.Banter.installer.yaml"
+
+          @"
+          PackageIdentifier: VANTSGAMES.Banter
+          PackageVersion: $v
+          PackageLocale: en-US
+          Publisher: VANTS GAMES
+          PublisherUrl: https://vants.cc
+          PublisherSupportUrl: https://github.com/VANTSGAMES/banter/issues
+          PrivacyUrl: https://vants.cc/privacidad
+          PackageName: Banter
+          PackageUrl: https://github.com/VANTSGAMES/banter
+          License: Proprietary
+          ShortDescription: Banter multiplatform desktop client for the VANTS GAMES ecosystem.
+          Tags:
+            - gaming
+            - esports
+            - community
+            - banter
+            - vants
+          ManifestType: defaultLocale
+          ManifestVersion: 1.9.0
+          "@ | Out-File -Encoding utf8 "$outDir/VANTSGAMES.Banter.locale.en-US.yaml"
+
+      - name: Publicar en GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Banter Desktop ${{ steps.ver.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            apps/desktop/release/Banter-Setup-*.exe
+            apps/desktop/release/SHA256SUMS.txt
+            apps/desktop/release/winget/*.yaml
+
+      - name: Enviar actualización automática a microsoft/winget-pkgs (si existe WINGET_GITHUB_TOKEN)
+        if: ${{ secrets.WINGET_GITHUB_TOKEN != '' }}
+        uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: VANTSGAMES.Banter
+          token: ${{ secrets.WINGET_GITHUB_TOKEN }}
+          installers-regex: 'Banter-Setup-.*\.exe$'
