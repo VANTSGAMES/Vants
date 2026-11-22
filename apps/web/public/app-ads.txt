@@ -1,0 +1,4 @@
+# Banter Android — app-ads.txt (Google AdMob)
+# Reemplaza pub-0000000000000000 por tu Publisher ID real de Google AdMob antes de publicar en Google Play.
+# Nota: Este archivo aplica únicamente a la app Android (no interfiere con el /ads.txt de NitroPay en Web/Escritorio).
+google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es" style="width: 100%">
+  <head>
+    <meta charset="utf-8" />
+    <title>Banter Desktop Ads — NitroPay</title>
+    <script data-cfasync="false">
+      window.nitroAds = window.nitroAds || {
+        createAd: function () {
+          return new Promise(function (resolve) {
+            window.nitroAds.queue.push(['createAd', arguments, resolve]);
+          });
+        },
+        addUserToken: function () {
+          window.nitroAds.queue.push(['addUserToken', arguments]);
+        },
+        queue: [],
+      };
+    </script>
+    <script data-cfasync="false" async src="https://consent.nitrocnct.com/loader.js"></script>
+    <script data-cfasync="false">
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var siteId = (params.get('siteId') || '').trim();
+        var isValidId = /^\d{3,10}$/.test(siteId);
+        var isDemo = params.get('demo') === '1' || !isValidId;
+        window.__BANTER_NITRO_DEMO = isDemo;
+        if (isValidId) {
+          var s = document.createElement('script');
+          s.async = true;
+          s.setAttribute('data-cfasync', 'false');
+          s.setAttribute('data-cmp-mode', '5');
+          if (isDemo) s.setAttribute('data-demo', 'true');
+          s.src = 'https://s.nitropay.com/ads-' + siteId + '.js';
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
+  </head>
+  <body style="width: 100%; margin: 0; background: #0a0a0b; color: #c4c4c9; font-family: system-ui, sans-serif">
+    <div style="width: 300px; padding: 8px; box-sizing: border-box">
+      <div id="banter-electron-slot-1" style="width: 300px; min-height: 250px; display: block"></div>
+      <div style="height: 16px"></div>
+      <div id="banter-electron-slot-2" style="width: 300px; min-height: 250px; display: block"></div>
+    </div>
+    <script>
+      (function () {
+        var demo = Boolean(window.__BANTER_NITRO_DEMO);
+        // Requisito oficial de NitroPay para apps Electron: skipBidders incluye 'google'.
+        var commonConfig = {
+          sizes: [[300, 250]],
+          demo: demo,
+          refreshTime: 30,
+          skipBidders: ['google'],
+          report: {
+            enabled: true,
+            position: 'bottom-right',
+            wording: 'Report Ad',
+          },
+        };
+        window.nitroAds.createAd('banter-electron-slot-1', commonConfig);
+        window.nitroAds.createAd('banter-electron-slot-2', commonConfig);
+      })();
+    </script>
+  </body>
+</html>

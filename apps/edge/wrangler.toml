@@ -1,0 +1,8 @@
+name = "banter-edge"
+main = "src/index.js"
+compatibility_date = "2026-01-15"
+
+[vars]
+# Sustituir por tu Site ID numérico asignado en el panel de NitroPay (ej. "1234")
+NITROPAY_SITE_ID = ""
+BANTER_SHEET_ID = "1i0t2hRSAO4WT7nKlK3rzgsx4oulmrYmpTqIe6CA5ozU"

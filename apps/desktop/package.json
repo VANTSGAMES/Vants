@@ -1,0 +1,13 @@
+{
+  "name": "@banter/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cliente de escritorio Electron para Banter con cumplimiento NitroPay (CMP modal, BrowserView remoto, GDPR resurface y modo Ad-Free para Nitro).",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  }
+}

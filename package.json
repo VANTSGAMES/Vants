@@ -1,0 +1,23 @@
+{
+  "name": "banter-ecosystem",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ecosistema multiplataforma Banter (Web + Escritorio Electron + Android Capacitor) con monetización híbrida Nitro + NitroPay/AdMob y gestión Google Forms/Sheets.",
+  "workspaces": [
+    "packages/*",
+    "apps/web",
+    "apps/desktop",
+    "apps/android"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace=@banter/web run dev",
+    "build:web": "npm --workspace=@banter/web run build",
+    "dev:desktop": "npm --workspace=@banter/desktop run start",
+    "sync:android": "npm run build:web && npm --workspace=@banter/android run sync",
+    "check": "npm --workspace=@banter/core run check && npm --workspace=@banter/web run check",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}
