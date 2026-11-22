@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   BANTER_PLANS,
   DEFAULT_BANTER_MOTOR_URL,
@@ -18,6 +18,14 @@ import {
 import { AdSlot } from "./components/AdSlot";
 import { NitroPersonalizer } from "./components/NitroPersonalizer";
 import { resurfacePrivacyConsent } from "./lib/nitropay";
+import {
+  checkPlatformUpdate,
+  scanDesktopCortexClips,
+  subscribeDesktopUpdates,
+  triggerInstallDesktopUpdate,
+  type DetectedCortexClip,
+  type UpdateStatusPayload,
+} from "./lib/appUpdater";
 
 const SHEETS_WEBHOOK_URL = String(
   import.meta.env.VITE_SHEETS_WEBHOOK_URL ||
@@ -32,6 +40,23 @@ export function App() {
   const [platform, setPlatform] = useState<BanterPlatform>(detected);
   const [planId, setPlanId] = useState<BanterPlanId>("free");
   const [customization, setCustomization] = useState<BanterProfileCustomization>(DEFAULT_CUSTOMIZATION);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatusPayload>({ state: "idle" });
+  const [cortexClips, setCortexClips] = useState<DetectedCortexClip[]>([]);
+  const [cortexFolders, setCortexFolders] = useState<string[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeDesktopUpdates((next) => setUpdateStatus(next));
+    checkPlatformUpdate(platform).then(setUpdateStatus).catch(() => {});
+    if (platform === "desktop-electron") {
+      scanDesktopCortexClips()
+        .then((r) => {
+          setCortexFolders(r.folders);
+          setCortexClips(r.clips);
+        })
+        .catch(() => {});
+    }
+    return unsub;
+  }, [platform]);
 
   // Registro de usuarios -> Google Sheets / Forms
   const [regHandle, setRegHandle] = useState("FEISS");
@@ -51,6 +76,7 @@ export function App() {
   const [reqBusy, setReqBusy] = useState(false);
 
   const decision = resolveMonetization(platform, planId);
+  const activePlan = BANTER_PLANS[planId];
 
   const cambiarPlan = (next: BanterPlanId) => {
     setPlanId(next);
@@ -154,6 +180,21 @@ export function App() {
             <span className="pill">Plataforma: {platformLabel(platform)}</span>
             <span className="pill">Red activa: {decision.adProvider}</span>
             <span className="pill">Facturación: {decision.billingChannel}</span>
+            <span className="pill">
+              Auto-update:{" "}
+              {updateStatus.state === "downloaded"
+                ? `v${updateStatus.version || "nueva"} lista`
+                : updateStatus.state === "downloading"
+                  ? `Descargando ${updateStatus.percent ?? 0}%`
+                  : updateStatus.state === "available"
+                    ? `v${updateStatus.version || "nueva"} disponible`
+                    : `v${updateStatus.currentVersion || updateStatus.version || "1.0.0"} al día`}
+            </span>
+            {updateStatus.state === "downloaded" && platform === "desktop-electron" && (
+              <button type="button" className="btn btn--primary" onClick={() => triggerInstallDesktopUpdate()}>
+                Reiniciar y actualizar
+              </button>
+            )}
             <a className="pill pill--link" href={GOOGLE_SHEET_URL} target="_blank" rel="noopener noreferrer">
               Abrir Google Sheet Maestra ↗
             </a>
@@ -212,6 +253,42 @@ export function App() {
           customization={customization}
           onChange={setCustomization}
         />
+
+        <section className="card">
+          <div className="card__head">
+            <div>
+              <span className="eyebrow">Captura automática · Razer Cortex → YouTube Shorts</span>
+              <h2>Clips automáticos con cupo diario por membresía</h2>
+            </div>
+            <span className="pill">
+              Tu plan ({activePlan.name}):{" "}
+              {activePlan.dailyShortsLimit > 0
+                ? `${activePlan.dailyShortsLimit} Shorts/día · ${activePlan.dailyVidiqLimit} vidIQ/día`
+                : "Recorte local 9:16 gratis (subida manual)"}
+            </span>
+          </div>
+          <p className="muted small">
+            En Windows PC la app detecta tus carpetas de <strong>Razer Cortex</strong> (u OBS/ShadowPlay) y convierte cada jugada a 9:16 en tu propio ordenador sin consumir servidores. Al entrar cada día, tu plan <strong>Nitro / Nitro+</strong> activa tu cupo diario de auto-subida a YouTube Shorts y optimización IA con vidIQ.
+          </p>
+          <div className="meta-row">
+            <a
+              className="pill pill--link"
+              href="https://github.com/VANTSGAMES/VANTS-Clipper/releases/latest"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Descargar motor VANTS Clipper PC ↗
+            </a>
+            <a className="pill pill--link" href="https://vants.cc/clips" target="_blank" rel="noopener noreferrer">
+              Ver mi cuota diaria en vants.cc ↗
+            </a>
+            {platform === "desktop-electron" && (
+              <span className="pill">
+                Carpetas detectadas: {cortexFolders.length} · Clips recientes: {cortexClips.length}
+              </span>
+            )}
+          </div>
+        </section>
 
         <section className="grid-2">
           <form className="card form" onSubmit={enviarRegistro}>

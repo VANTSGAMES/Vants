@@ -12,7 +12,16 @@
  */
 
 const { app, BrowserWindow, BrowserView, ipcMain } = require('electron');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+
+let autoUpdater = null;
+try {
+  ({ autoUpdater } = require('electron-updater'));
+} catch {
+  autoUpdater = null;
+}
 
 const BANTER_ORIGIN = (process.env.BANTER_WEB_ORIGIN || 'https://vants.cc').replace(/\/$/, '');
 const SITE_ID = (process.env.NITROPAY_SITE_ID || '').trim();
@@ -21,11 +30,108 @@ const AD_URL = `${BANTER_ORIGIN}/app/nitro-ads.html?siteId=${encodeURIComponent(
 const CMP_URL = `${BANTER_ORIGIN}/app/cmp.html`;
 const REFERRER = `${BANTER_ORIGIN}/`;
 const AD_RAIL_WIDTH = 325;
+const VIDEO_EXTS = new Set(['.mp4', '.mkv', '.mov', '.ts', '.m4v', '.webm']);
 
 let mainWindow = null;
 let adView = null;
 let isAdFree = false;
 let cmpCompleted = false;
+
+function emitUpdateStatus(payload) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('banter:update-status', {
+      currentVersion: app.getVersion(),
+      ...payload,
+    });
+  }
+}
+
+function setupAutoUpdater() {
+  if (!autoUpdater || !app.isPackaged) return;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => emitUpdateStatus({ state: 'checking' }));
+  autoUpdater.on('update-available', (info) =>
+    emitUpdateStatus({ state: 'available', version: info && info.version }),
+  );
+  autoUpdater.on('update-not-available', () => emitUpdateStatus({ state: 'up-to-date' }));
+  autoUpdater.on('download-progress', (p) =>
+    emitUpdateStatus({ state: 'downloading', percent: Math.round(p.percent || 0) }),
+  );
+  autoUpdater.on('update-downloaded', (info) =>
+    emitUpdateStatus({ state: 'downloaded', version: info && info.version }),
+  );
+  autoUpdater.on('error', (err) =>
+    emitUpdateStatus({ state: 'error', message: String((err && err.message) || 'update_error') }),
+  );
+
+  // Comprueba al arrancar y cada 4 horas mientras la app esté abierta.
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  }, 8000);
+  setInterval(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  }, 4 * 60 * 60 * 1000);
+}
+
+function scanCortexClipsLocal() {
+  const dirs = [];
+  const localApp = process.env.LOCALAPPDATA || '';
+  if (localApp) {
+    const base = path.join(localApp, 'Razer', 'Razer Cortex', 'GameClips');
+    if (fs.existsSync(base)) {
+      try {
+        for (const profile of fs.readdirSync(base, { withFileTypes: true })) {
+          if (!profile.isDirectory()) continue;
+          const vids = path.join(base, profile.name, 'Videos');
+          if (fs.existsSync(vids)) dirs.push(vids);
+        }
+      } catch {
+        // ignorar errores de permisos
+      }
+      if (!dirs.length) dirs.push(base);
+    }
+  }
+  const videosHome = path.join(os.homedir(), 'Videos');
+  for (const sub of ['VALORANT', 'Captures', 'Razer Cortex']) {
+    const p = path.join(videosHome, sub);
+    if (fs.existsSync(p) && !dirs.includes(p)) dirs.push(p);
+  }
+
+  const clips = [];
+  const walk = (dir, depth = 0) => {
+    if (depth > 3 || clips.length >= 25) return;
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of entries) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        walk(full, depth + 1);
+      } else if (VIDEO_EXTS.has(path.extname(ent.name).toLowerCase())) {
+        try {
+          const st = fs.statSync(full);
+          clips.push({
+            name: ent.name,
+            game: path.basename(path.dirname(full)),
+            path: full,
+            sizeMb: Number((st.size / 1048576).toFixed(1)),
+            mtimeMs: st.mtimeMs,
+          });
+        } catch {
+          // ignorar
+        }
+      }
+    }
+  };
+  for (const d of dirs) walk(d, 0);
+  clips.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return { folders: dirs, clips: clips.slice(0, 12) };
+}
 
 function positionAdView() {
   if (!mainWindow || !adView || isAdFree) return;
@@ -166,8 +272,33 @@ ipcMain.handle('banter:set-ad-free', (_evt, nextAdFree) => {
 
 ipcMain.handle('banter:app-version', () => app.getVersion());
 
+ipcMain.handle('banter:check-updates', async () => {
+  if (!autoUpdater || !app.isPackaged) {
+    return { supported: false, currentVersion: app.getVersion(), state: 'dev' };
+  }
+  try {
+    const res = await autoUpdater.checkForUpdates();
+    return {
+      supported: true,
+      currentVersion: app.getVersion(),
+      latestVersion: res && res.updateInfo ? res.updateInfo.version : app.getVersion(),
+    };
+  } catch (err) {
+    return { supported: true, currentVersion: app.getVersion(), error: String((err && err.message) || 'error') };
+  }
+});
+
+ipcMain.handle('banter:install-update', () => {
+  if (autoUpdater && app.isPackaged) {
+    autoUpdater.quitAndInstall(false, true);
+  }
+});
+
+ipcMain.handle('banter:scan-cortex-clips', () => scanCortexClipsLocal());
+
 app.whenReady().then(() => {
   createMainWindow();
+  setupAutoUpdater();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
   });

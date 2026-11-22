@@ -16,6 +16,8 @@ export interface BanterPlanDefinition {
   adFree: boolean;
   maxUploadMb: number;
   streamQuality: "720p30" | "1080p60" | "4k60";
+  dailyShortsLimit: number;
+  dailyVidiqLimit: number;
   googlePlaySku: string | null;
   stripePriceEnv: string | null;
   perks: string[];
@@ -32,10 +34,13 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
     adFree: false,
     maxUploadMb: 25,
     streamQuality: "720p30",
+    dailyShortsLimit: 0,
+    dailyVidiqLimit: 0,
     googlePlaySku: null,
     stripePriceEnv: null,
     perks: [
-      "Salas de voz, chat y comunidad multiplataforma (Web, PC y Android)",
+      "Salas de voz, chat, auto-updates (PC y Android) y comunidad multiplataforma",
+      "Captura local Razer Cortex + recorte 9:16 en tu PC (subida manual a YouTube)",
       "Subida de archivos hasta 25 MB y streams 720p 30fps",
       "Sostenido por anuncios gaming NitroPay (Web/PC) y AdMob (Android)",
     ],
@@ -45,18 +50,20 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
   nitro: {
     id: "nitro",
     name: "Banter Nitro",
-    tagline: "0 anuncios + personalización de perfil y calidad 1080p60",
+    tagline: "0 anuncios + personalización + 3 YouTube Shorts y 3 vidIQ al día",
     priceMonthlyUsd: 4.99,
     adFree: true,
     maxUploadMb: 150,
     streamQuality: "1080p60",
+    dailyShortsLimit: 3,
+    dailyVidiqLimit: 3,
     googlePlaySku: "banter_nitro_monthly",
     stripePriceEnv: "STRIPE_PRICE_BANTER_NITRO",
     perks: [
       "Experiencia 100 % sin anuncios en Web, Escritorio y Android",
+      "Auto-clips Razer Cortex → 3 YouTube Shorts/día + 3 optimizaciones vidIQ/día",
       "Marcos animados de avatar (Crimson y Cyber Gold) + banners HD",
-      "Insignia NITRO en salas y chats + emojis animados",
-      "Subidas de hasta 150 MB y streaming 1080p 60fps",
+      "Insignia NITRO en salas y chats + subidas hasta 150 MB y 1080p 60fps",
     ],
     allowedFrames: ["none", "neon-crimson", "cyber-gold"],
     allowedBanners: ["graphite", "obsidian-grid", "crimson-pulse"],
@@ -64,18 +71,20 @@ export const BANTER_PLANS: Record<BanterPlanId, BanterPlanDefinition> = {
   nitro_plus: {
     id: "nitro_plus",
     name: "Banter Nitro+",
-    tagline: "Personalización total, 4K60, boosts de servidor y prioridad VIP",
+    tagline: "Personalización total, 4K60 y 5 YouTube Shorts + 5 vidIQ al día",
     priceMonthlyUsd: 9.99,
     adFree: true,
     maxUploadMb: 500,
     streamQuality: "4k60",
+    dailyShortsLimit: 5,
+    dailyVidiqLimit: 5,
     googlePlaySku: "banter_nitro_plus_monthly",
     stripePriceEnv: "STRIPE_PRICE_BANTER_NITRO_PLUS",
     perks: [
       "Todo lo incluido en Banter Nitro (0 anuncios en todas las plataformas)",
+      "Auto-clips Razer Cortex → 5 YouTube Shorts/día + 5 vidIQ/día + aviso en Discord",
       "Marco exclusivo Holo Prism + banner animado Aurora Mesh + color libre",
-      "2 Boosts mensuales para comunidades + subidas hasta 500 MB",
-      "Streaming 4K 60fps y prioridad en solicitudes y soporte",
+      "2 Boosts mensuales, subidas hasta 500 MB y streaming 4K 60fps",
     ],
     allowedFrames: ["none", "neon-crimson", "cyber-gold", "holo-prism"],
     allowedBanners: ["graphite", "obsidian-grid", "crimson-pulse", "aurora-mesh"],

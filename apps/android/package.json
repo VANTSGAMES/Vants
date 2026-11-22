@@ -8,6 +8,7 @@
     "open": "npx cap open android"
   },
   "dependencies": {
+    "@capawesome/capacitor-app-update": "^6.1.0",
     "@capacitor-community/admob": "^6.2.0",
     "@capacitor/android": "^6.2.0",
     "@capacitor/core": "^6.2.0"
