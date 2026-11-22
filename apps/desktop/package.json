@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "description": "Cliente de escritorio Electron para Banter con cumplimiento NitroPay (CMP modal, BrowserView remoto, GDPR resurface y modo Ad-Free para Nitro).",
+  "author": "VANTS GAMES <contacto@vants.cc>",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-builder --win nsis --x64"
+    "dist:win": "electron-builder --win nsis --x64 --publish never"
   },
   "build": {
     "appId": "cc.vants.banter.desktop",
     "productName": "Banter",
+    "electronVersion": "35.7.5",
     "copyright": "Copyright © 2026 VANTS GAMES",
     "directories": {
       "output": "release"
@@ -44,7 +46,7 @@
     }
   },
   "devDependencies": {
-    "electron": "^35.0.0",
+    "electron": "35.7.5",
     "electron-builder": "^25.1.8"
   }
 }
