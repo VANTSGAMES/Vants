@@ -19,3 +19,6 @@ Para cumplir simultáneamente con **Google Play Store** y con la exclusividad we
    npx cap sync android
    npx cap open android
    ```
+4. **Actualizaciones automáticas en Android (Google Play In-App Updates):**
+   - El plugin `@capawesome/capacitor-app-update` ya está instalado en `apps/android/package.json` y conectado desde `apps/web/src/lib/appUpdater.ts`.
+   - Al abrir la app, consulta a Google Play Core (`getAppUpdateInfo()`). Cuando subes una nueva versión `.aab` a Play Console, la app inicia automáticamente una actualización `FLEXIBLE` en segundo plano (100 % conforme con las políticas de Google Play y compatible con AdMob + Play Billing).

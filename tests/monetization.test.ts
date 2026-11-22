@@ -82,6 +82,12 @@ test("Nitro customization enforces plan entitlements", () => {
   assert.equal(nitroPlusCustom.badgeText, "FOUNDER");
   assert.equal(nitroPlusCustom.customEmojiUnlocked, true);
   assert.equal(BANTER_PLANS.nitro_plus.maxUploadMb, 500);
+  assert.equal(BANTER_PLANS.free.dailyShortsLimit, 0);
+  assert.equal(BANTER_PLANS.free.dailyVidiqLimit, 0);
+  assert.equal(BANTER_PLANS.nitro.dailyShortsLimit, 3);
+  assert.equal(BANTER_PLANS.nitro.dailyVidiqLimit, 3);
+  assert.equal(BANTER_PLANS.nitro_plus.dailyShortsLimit, 5);
+  assert.equal(BANTER_PLANS.nitro_plus.dailyVidiqLimit, 5);
 });
 
 test("Edge Worker serves IAB one-hop 301 redirect for /ads.txt when NITROPAY_SITE_ID is configured", async () => {

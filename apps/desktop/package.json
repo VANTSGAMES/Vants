@@ -44,7 +44,17 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Banter"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "VANTSGAMES",
+        "repo": "banter"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "35.7.5",

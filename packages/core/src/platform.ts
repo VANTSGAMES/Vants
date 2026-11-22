@@ -7,6 +7,13 @@ declare global {
       resurfaceCmp: () => Promise<void>;
       setAdFree: (adFree: boolean) => Promise<void>;
       getAppVersion: () => Promise<string>;
+      checkForUpdates?: () => Promise<{ supported: boolean; currentVersion?: string; latestVersion?: string; error?: string }>;
+      installUpdate?: () => Promise<void>;
+      onUpdateStatus?: (cb: (status: Record<string, unknown>) => void) => () => void;
+      scanCortexClips?: () => Promise<{
+        folders: string[];
+        clips: Array<{ name: string; game: string; path: string; sizeMb: number; mtimeMs: number }>;
+      }>;
     };
     Capacitor?: {
       isNativePlatform?: () => boolean;
