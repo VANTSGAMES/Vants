@@ -128,9 +128,12 @@ function createMainWindow() {
   if (devUrl) {
     mainWindow.loadURL(devUrl);
   } else {
-    const localDist = path.resolve(__dirname, '../web/dist/index.html');
-    mainWindow.loadFile(localDist).catch(() => {
-      mainWindow.loadURL(BANTER_ORIGIN);
+    const packagedDist = path.resolve(__dirname, 'web-dist/index.html');
+    const workspaceDist = path.resolve(__dirname, '../web/dist/index.html');
+    mainWindow.loadFile(packagedDist).catch(() => {
+      mainWindow.loadFile(workspaceDist).catch(() => {
+        mainWindow.loadURL(BANTER_ORIGIN);
+      });
     });
   }
 
