@@ -3,19 +3,29 @@ import {
   fetchClipsComunidad,
   fetchDirectos,
   fetchEquiposFaceit,
+  fetchInsignias,
   fetchJugadores,
+  fetchMisInsignias,
+  fetchPerfilPublico,
   getDesktopBridge,
+  getSavedSession,
   openInApp,
   openUrl,
+  saveSession,
+  startEmailOtp,
+  verifyEmailOtp,
+  type AuthSession,
   type ClipComunidadItem,
   type DirectoItem,
   type EquipoFaceitItem,
+  type InsigniaCatalogItem,
   type JugadorItem,
   type LocalClipItem,
+  type PerfilPublicoData,
   type ShieldReport,
 } from "./lib/vantsApi";
 
-type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking" | "planes" | "shield";
+type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking" | "perfil" | "planes" | "shield";
 
 interface PlanCard {
   id: string;
@@ -75,6 +85,97 @@ const PLANES_VANTS: PlanCard[] = [
   },
 ];
 
+const DEFAULT_INSIGNIAS: InsigniaCatalogItem[] = [
+  {
+    code: "MEMBER",
+    nombre: "Miembro VANTS",
+    categoria: "comunidad",
+    rareza: "common",
+    color: "#8892b0",
+    forma: "shield",
+    icono: "shield",
+    descripcion: "Registrado oficialmente en la comunidad competitiva VANTS.",
+    requisito: "Crear cuenta en VANTS",
+  },
+  {
+    code: "FOUNDER",
+    nombre: "Fundador VANTS",
+    categoria: "honor",
+    rareza: "legendary",
+    color: "#f5c044",
+    forma: "crown",
+    icono: "crown",
+    descripcion: "Miembro fundador de la primera generación de VANTS GAMES.",
+    requisito: "Primera temporada VANTS",
+  },
+  {
+    code: "FACEIT_LINKED",
+    nombre: "Competidor FACEIT",
+    categoria: "competitivo",
+    rareza: "rare",
+    color: "#ff5500",
+    forma: "hexagon",
+    icono: "crosshair",
+    descripcion: "Cuenta de FACEIT CS2 vinculada y verificada en el Ranking.",
+    requisito: "Vincular FACEIT",
+  },
+  {
+    code: "VALORANT_LINKED",
+    nombre: "Agente VALORANT",
+    categoria: "competitivo",
+    rareza: "rare",
+    color: "#ff4655",
+    forma: "diamond",
+    icono: "val",
+    descripcion: "Riot ID vinculado con seguimiento de rango y RR.",
+    requisito: "Vincular Riot ID",
+  },
+  {
+    code: "FORTNITE_LINKED",
+    nombre: "Competidor Fortnite",
+    categoria: "competitivo",
+    rareza: "rare",
+    color: "#9d4dff",
+    forma: "star",
+    icono: "bolt",
+    descripcion: "Cuenta de Epic Games vinculada al circuito VANTS.",
+    requisito: "Vincular Epic Games",
+  },
+  {
+    code: "PRO",
+    nombre: "VANTS PRO",
+    categoria: "membresia",
+    rareza: "epic",
+    color: "#ff0d2e",
+    forma: "octagon",
+    icono: "flame",
+    descripcion: "Suscriptor activo de VANTS PRO con prioridad competitiva.",
+    requisito: "Membresía VANTS PRO",
+  },
+  {
+    code: "CREATOR",
+    nombre: "VANTS CREATOR",
+    categoria: "creadores",
+    rareza: "legendary",
+    color: "#b44cff",
+    forma: "star",
+    icono: "video",
+    descripcion: "Creador oficial de contenido y directos en el ecosistema VANTS.",
+    requisito: "Membresía VANTS CREATOR",
+  },
+  {
+    code: "SOCIO",
+    nombre: "SOCIO VANTS",
+    categoria: "honor",
+    rareza: "mythic",
+    color: "#f5c044",
+    forma: "crown",
+    icono: "gem",
+    descripcion: "Rango mítico de Socio VANTS con voz y voto en el circuito.",
+    requisito: "Invitación / Socio VANTS",
+  },
+];
+
 interface GameEntry {
   id: string;
   name: string;
@@ -82,6 +183,7 @@ interface GameEntry {
   accent: string;
   platformLabel: string;
   webFallback: string;
+  cover: string;
 }
 
 const PC_GAMES: GameEntry[] = [
@@ -92,6 +194,7 @@ const PC_GAMES: GameEntry[] = [
     accent: "#ff4655",
     platformLabel: "Riot Client",
     webFallback: "https://vants.cc/torneos?juego=valorant",
+    cover: "./img/juegos/valorant.jpg",
   },
   {
     id: "cs2",
@@ -100,6 +203,7 @@ const PC_GAMES: GameEntry[] = [
     accent: "#f5c044",
     platformLabel: "Steam",
     webFallback: "https://vants.cc/torneos?juego=cs2",
+    cover: "./img/juegos/cs2.jpg",
   },
   {
     id: "fortnite",
@@ -108,6 +212,7 @@ const PC_GAMES: GameEntry[] = [
     accent: "#9d4dff",
     platformLabel: "Epic Games",
     webFallback: "https://vants.cc/torneos?juego=fortnite",
+    cover: "./img/juegos/fortnite.jpg",
   },
   {
     id: "lol",
@@ -116,22 +221,25 @@ const PC_GAMES: GameEntry[] = [
     accent: "#4cc9f0",
     platformLabel: "Riot Client",
     webFallback: "https://vants.cc/torneos?juego=lol",
+    cover: "./img/juegos/lol.jpg",
   },
   {
-    id: "rocketleague",
-    name: "Rocket League",
-    subtitle: "Epic Games · Torneos 2v2 / 3v3",
+    id: "warzone",
+    name: "Call of Duty: Warzone",
+    subtitle: "PC · Battle Royale y escuadras VANTS",
     accent: "#3ddc84",
-    platformLabel: "Epic Games",
-    webFallback: "https://vants.cc/torneos?juego=rocketleague",
+    platformLabel: "PC",
+    webFallback: "https://vants.cc/torneos?juego=warzone",
+    cover: "./img/juegos/warzone.jpg",
   },
   {
-    id: "steam",
-    name: "Steam",
-    subtitle: "Abrir biblioteca completa de Steam",
+    id: "fc27",
+    name: "EA SPORTS FC 27",
+    subtitle: "Circuito VANTS · Copas 1v1 y clubes",
     accent: "#66c0f4",
-    platformLabel: "Biblioteca PC",
-    webFallback: "https://store.steampowered.com",
+    platformLabel: "Circuito VANTS",
+    webFallback: "https://vants.cc/torneos?juego=fc27",
+    cover: "./img/juegos/fc27.jpg",
   },
 ];
 
@@ -143,14 +251,16 @@ const MOBILE_GAMES: GameEntry[] = [
     accent: "#ff9e2c",
     platformLabel: "Android",
     webFallback: "https://vants.cc/torneos?juego=freefire",
+    cover: "./img/juegos/freefire.jpg",
   },
   {
     id: "mlbb",
-    name: "Mobile Legends",
+    name: "Mobile Legends: Bang Bang",
     subtitle: "Móvil · Circuito 5v5 LATAM",
     accent: "#4cc9f0",
     platformLabel: "Android",
     webFallback: "https://vants.cc/torneos?juego=mlbb",
+    cover: "./img/juegos/mlbb.jpg",
   },
   {
     id: "wildrift",
@@ -159,6 +269,7 @@ const MOBILE_GAMES: GameEntry[] = [
     accent: "#3ddc84",
     platformLabel: "Android",
     webFallback: "https://vants.cc/torneos?juego=wildrift",
+    cover: "./img/juegos/wildrift.jpg",
   },
   {
     id: "clashroyale",
@@ -167,6 +278,7 @@ const MOBILE_GAMES: GameEntry[] = [
     accent: "#f5c044",
     platformLabel: "Android",
     webFallback: "https://vants.cc/torneos?juego=clashroyale",
+    cover: "./img/juegos/clashroyale.jpg",
   },
   {
     id: "valorant",
@@ -175,6 +287,7 @@ const MOBILE_GAMES: GameEntry[] = [
     accent: "#ff4655",
     platformLabel: "Circuito VANTS",
     webFallback: "https://vants.cc/torneos?juego=valorant",
+    cover: "./img/juegos/valorant.jpg",
   },
   {
     id: "cs2",
@@ -183,6 +296,7 @@ const MOBILE_GAMES: GameEntry[] = [
     accent: "#ff0d2e",
     platformLabel: "Circuito VANTS",
     webFallback: "https://vants.cc/torneos?juego=cs2",
+    cover: "./img/juegos/cs2.jpg",
   },
   {
     id: "fortnite",
@@ -191,6 +305,7 @@ const MOBILE_GAMES: GameEntry[] = [
     accent: "#9d4dff",
     platformLabel: "Circuito VANTS",
     webFallback: "https://vants.cc/torneos?juego=fortnite",
+    cover: "./img/juegos/fortnite.jpg",
   },
 ];
 
@@ -221,6 +336,16 @@ export function App() {
   const [searchRank, setSearchRank] = useState("");
   const [clipFilter, setClipFilter] = useState("todos");
 
+  // Sesión VANTS Identity (Email OTP + Google), perfil del jugador, banner e insignias
+  const [session, setSession] = useState<AuthSession | null>(() => getSavedSession());
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [insigniasCat, setInsigniasCat] = useState<InsigniaCatalogItem[]>([]);
+  const [misInsignias, setMisInsignias] = useState<string[]>(["MEMBER"]);
+  const [perfilActivo, setPerfilActivo] = useState<PerfilPublicoData | null>(null);
+
   const showToast = (msg: string) => {
     setToast(msg);
     window.setTimeout(() => setToast((curr) => (curr === msg ? null : curr)), 3200);
@@ -228,18 +353,72 @@ export function App() {
 
   const refreshData = async () => {
     setLoading(true);
-    const [d, j, e, c] = await Promise.all([
+    const [d, j, e, c, ins] = await Promise.all([
       fetchDirectos(),
       fetchJugadores(),
       fetchEquiposFaceit(),
       fetchClipsComunidad(),
+      fetchInsignias(),
     ]);
     setDirectos(d.directos);
     setJugadores(j.jugadores);
     setEquipos(e.equipos);
     setClipsComunidad(c.clips);
+    setInsigniasCat(ins.catalogo);
     setOffline(d.offline && j.offline);
     setLoading(false);
+  };
+
+  const cargarPerfilPorPid = async (pid: string) => {
+    const p = await fetchPerfilPublico(pid);
+    if (p) {
+      setPerfilActivo(p);
+      if (p.insignias?.length) setMisInsignias(p.insignias);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!otpEmail.trim()) {
+      showToast("Introduce tu correo electrónico.");
+      return;
+    }
+    setAuthBusy(true);
+    const r = await startEmailOtp(otpEmail);
+    setAuthBusy(false);
+    if (r.ok) {
+      setOtpSent(true);
+      showToast("Código de 6 dígitos enviado a tu correo.");
+    } else {
+      showToast("No se pudo enviar el código (" + (r.error || "verifica tu correo") + ").");
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode.trim()) return;
+    setAuthBusy(true);
+    const r = await verifyEmailOtp(otpEmail, otpCode);
+    setAuthBusy(false);
+    if (r.ok && r.session) {
+      setSession(r.session);
+      setOtpSent(false);
+      setOtpCode("");
+      showToast(`¡Bienvenido, ${r.session.user.name}!`);
+      const mias = await fetchMisInsignias(r.session.token);
+      if (mias) {
+        setMisInsignias(mias.conseguidas);
+        if (mias.pid) await cargarPerfilPorPid(mias.pid);
+      }
+    } else {
+      showToast("Código inválido o expirado.");
+    }
+  };
+
+  const handleLogout = () => {
+    saveSession(null);
+    setSession(null);
+    setPerfilActivo(null);
+    setMisInsignias(["MEMBER"]);
+    showToast("Sesión cerrada.");
   };
 
   const scanLocalClips = async () => {
@@ -294,6 +473,14 @@ export function App() {
 
   useEffect(() => {
     void refreshData();
+    if (session?.token) {
+      fetchMisInsignias(session.token).then((m) => {
+        if (m) {
+          setMisInsignias(m.conseguidas);
+          if (m.pid) void cargarPerfilPorPid(m.pid);
+        }
+      }).catch(() => {});
+    }
     if (desktop) {
       void scanLocalClips();
       void runShield();
@@ -347,6 +534,7 @@ export function App() {
     { id: "clips", label: isPc ? "Clips PC" : "Clips", icon: "🎬", badge: isPc && localClips.length ? String(localClips.length) : undefined },
     { id: "directos", label: "Directos", icon: "🔴", badge: vivos.length ? String(vivos.length) : undefined, live: vivos.length > 0 },
     { id: "ranking", label: "Ranking", icon: "🏆" },
+    { id: "perfil", label: session ? session.user.name.slice(0, 12) : "Perfil / Entrar", icon: "👤", badge: session ? "ON" : undefined },
     { id: "planes", label: "Planes", icon: "⭐" },
     ...(isPc
       ? [
@@ -361,13 +549,13 @@ export function App() {
       : []),
   ];
 
-  // Barra inferior Android (5 pestañas táctiles cómodas >= 48px, sin elementos de PC)
+  // Barra inferior Android (5 pestañas táctiles cómodas >= 48px, con Perfil del jugador)
   const mobileBottomNav: Array<{ id: TabId; label: string; icon: string }> = [
     { id: "inicio", label: "Inicio", icon: "⚡" },
     { id: "juegos", label: "Torneos", icon: "🎮" },
     { id: "directos", label: "En vivo", icon: "🔴" },
     { id: "ranking", label: "Ranking", icon: "🏆" },
-    { id: "planes", label: "Planes", icon: "⭐" },
+    { id: "perfil", label: session ? "Mi Perfil" : "Entrar", icon: "👤" },
   ];
 
   return (
@@ -393,6 +581,14 @@ export function App() {
         </div>
 
         <div className="vants-titlebar-right">
+          <button
+            type="button"
+            className={`btn ${session ? "" : "primary"}`}
+            style={{ padding: "4px 10px", fontSize: "11px" }}
+            onClick={() => setTab("perfil")}
+          >
+            {session ? `👤 ${session.user.name.slice(0, 14)}` : "👤 Iniciar sesión"}
+          </button>
           <button type="button" className="win-btn" title="Actualizar datos" onClick={() => void refreshData()}>
             ↻
           </button>
@@ -501,6 +697,10 @@ export function App() {
                 <div className="grid-cards">
                   {PC_GAMES.slice(0, 3).map((g) => (
                     <div key={g.id} className="card">
+                      <div className="game-cover-wrap">
+                        <img src={g.cover} alt={g.name} className="game-cover-img" />
+                        <span className="game-cover-badge">{g.platformLabel}</span>
+                      </div>
                       <div className="game-accent" style={{ background: g.accent }} />
                       <h3 className="card-title">{g.name}</h3>
                       <p className="card-meta">{g.subtitle}</p>
@@ -545,6 +745,10 @@ export function App() {
               <div className="grid-cards">
                 {activeGames.map((g) => (
                   <div key={g.id} className="card">
+                    <div className="game-cover-wrap">
+                      <img src={g.cover} alt={g.name} className="game-cover-img" />
+                      <span className="game-cover-badge">{g.platformLabel}</span>
+                    </div>
                     <div className="game-accent" style={{ background: g.accent }} />
                     <h3 className="card-title">{g.name}</h3>
                     <p className="card-meta">{g.subtitle}</p>
@@ -691,7 +895,15 @@ export function App() {
               </div>
               <div className="rank-list">
                 {filteredJugadores.map((j, idx) => (
-                  <div key={j.pid} className="rank-row">
+                  <div
+                    key={j.pid}
+                    className="rank-row"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      void cargarPerfilPorPid(j.pid);
+                      setTab("perfil");
+                    }}
+                  >
                     <div className="rank-pos">#{idx + 1}</div>
                     {j.avatar ? (
                       <img src={j.avatar} alt={j.nick} className="rank-avatar" />
@@ -704,7 +916,7 @@ export function App() {
                       </div>
                       <div style={{ fontSize: 12, color: "var(--muted)" }}>
                         {j.fundador ? "Fundador VANTS · " : ""}
-                        {j.xp} XP
+                        {j.xp} XP · Ver perfil e insignias →
                       </div>
                     </div>
                     <div className="rank-metrics">
@@ -713,6 +925,196 @@ export function App() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </>
+          )}
+
+          {tab === "perfil" && (
+            <>
+              <div className="section-head">
+                <h2>👤 Perfil Competitivo, Banner e Insignias VANTS</h2>
+                <div className="btn-row">
+                  <button type="button" className="btn" onClick={() => openInApp("https://vants.cc/perfil")}>
+                    🎨 Personalizar banner / Vincular cuentas
+                  </button>
+                  {session && (
+                    <button type="button" className="btn" onClick={handleLogout}>
+                      Cerrar sesión
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {!session && (
+                <div className="card" style={{ marginBottom: 22, borderColor: "rgba(255, 13, 46, 0.45)" }}>
+                  <div className="game-accent" style={{ background: "#ff0d2e" }} />
+                  <h3 className="card-title">Iniciar sesión en VANTS Identity</h3>
+                  <p className="card-meta">
+                    Entra con un código rápido a tu correo electrónico o con tu cuenta de Google para sincronizar tu
+                    perfil, tu banner personalizado y tus insignias 3D.
+                  </p>
+                  <div className="btn-row" style={{ alignItems: "center", marginTop: 6 }}>
+                    <input
+                      type="email"
+                      className="search-input"
+                      placeholder="tu-correo@ejemplo.com"
+                      value={otpEmail}
+                      onChange={(e) => setOtpEmail(e.target.value)}
+                      style={{ minWidth: 230 }}
+                    />
+                    {!otpSent ? (
+                      <button
+                        type="button"
+                        className="btn primary"
+                        disabled={authBusy}
+                        onClick={() => void handleSendOtp()}
+                      >
+                        {authBusy ? "Enviando…" : "✉ Enviar código (6 dígitos)"}
+                      </button>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder="Código 6 dígitos"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value)}
+                          style={{ minWidth: 140, width: 150 }}
+                        />
+                        <button
+                          type="button"
+                          className="btn primary"
+                          disabled={authBusy}
+                          onClick={() => void handleVerifyOtp()}
+                        >
+                          {authBusy ? "Verificando…" : "✓ Verificar y entrar"}
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => openInApp("https://vants.cc/entrar")}
+                    >
+                      🌐 Entrar con Google / Discord
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Banner oficial del jugador + Avatar + Sello */}
+              <div className="profile-banner">
+                <div
+                  className="profile-banner-bg"
+                  style={{
+                    backgroundImage: `url(${perfilActivo?.banner || "./img/juegos/valorant.jpg"})`,
+                  }}
+                />
+                <div className="profile-banner-inner">
+                  {perfilActivo?.avatar || session?.user.picture ? (
+                    <img
+                      src={perfilActivo?.avatar || session?.user.picture || ""}
+                      alt={perfilActivo?.nick || session?.user.name || "Jugador"}
+                      className="profile-avatar-lg"
+                    />
+                  ) : (
+                    <div className="profile-avatar-lg">
+                      {(perfilActivo?.nick || session?.user.name || "VG").slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <h2 style={{ margin: 0, fontSize: 22 }}>
+                        {perfilActivo?.nick || session?.user.name || "Jugador VANTS"}
+                      </h2>
+                      {perfilActivo?.sello && <span className="vants-pill">{perfilActivo.sello}</span>}
+                      {perfilActivo?.fundador && <span className="vants-pill ok">FUNDADOR VANTS</span>}
+                    </div>
+                    <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                      {perfilActivo
+                        ? `${perfilActivo.xp} XP · ${perfilActivo.insignias?.length || misInsignias.length} insignias desbloqueadas`
+                        : session?.user.email || "Inicia sesión o selecciona cualquier jugador del Ranking para ver su ficha completa"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tarjetas de cuentas competitivas vinculadas (FACEIT CS2, VALORANT, Fortnite) */}
+              <div className="grid-cards" style={{ marginBottom: 24 }}>
+                <div className="card">
+                  <div className="game-accent" style={{ background: "#ff5500" }} />
+                  <h3 className="card-title">Counter-Strike 2 · FACEIT</h3>
+                  {perfilActivo?.faceit ? (
+                    <p className="card-meta">
+                      <strong>{perfilActivo.faceit.nick}</strong> · Nivel {perfilActivo.faceit.nivel ?? "—"} ·{" "}
+                      {perfilActivo.faceit.elo ?? "—"} ELO · Winrate {perfilActivo.faceit.winrate ?? "—"}% · K/D{" "}
+                      {perfilActivo.faceit.kd ?? "—"}
+                    </p>
+                  ) : (
+                    <p className="card-meta">Sin cuenta de FACEIT vinculada en este perfil.</p>
+                  )}
+                </div>
+
+                <div className="card">
+                  <div className="game-accent" style={{ background: "#ff4655" }} />
+                  <h3 className="card-title">VALORANT · Riot ID</h3>
+                  {perfilActivo?.valorant?.riot ? (
+                    <p className="card-meta">
+                      <strong>{perfilActivo.valorant.riot}</strong> · Rango{" "}
+                      {perfilActivo.valorant.tier || "Sin clasificar"} ({perfilActivo.valorant.rr ?? 0} RR)
+                      {perfilActivo.valorant.pico ? ` · Pico: ${perfilActivo.valorant.pico}` : ""}
+                    </p>
+                  ) : (
+                    <p className="card-meta">Sin Riot ID vinculado en este perfil.</p>
+                  )}
+                </div>
+
+                <div className="card">
+                  <div className="game-accent" style={{ background: "#9d4dff" }} />
+                  <h3 className="card-title">Fortnite · Epic Games</h3>
+                  {perfilActivo?.fortnite?.nombre ? (
+                    <p className="card-meta">
+                      <strong>{perfilActivo.fortnite.nombre}</strong>
+                      {perfilActivo.fortnite.stats
+                        ? ` · ${perfilActivo.fortnite.stats.victorias ?? 0} victorias · K/D ${perfilActivo.fortnite.stats.kd ?? "—"}`
+                        : " · Cuenta Epic verificada"}
+                    </p>
+                  ) : (
+                    <p className="card-meta">Sin cuenta de Epic Games vinculada en este perfil.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Vitrina de Insignias Oficiales 3D */}
+              <div className="section-head">
+                <h2>🏅 Vitrina de Insignias Oficiales VANTS ({misInsignias.length} conseguidas)</h2>
+              </div>
+              <div className="badge-grid">
+                {(insigniasCat.length ? insigniasCat : DEFAULT_INSIGNIAS).map((b) => {
+                  const unlocked = misInsignias.includes(b.code);
+                  return (
+                    <div key={b.code} className={`badge-card ${unlocked ? "unlocked" : ""}`}>
+                      <div
+                        className="badge-hex"
+                        style={{
+                          background: `radial-gradient(circle at 30% 25%, ${b.color}, #10121a 85%)`,
+                          boxShadow: unlocked ? `0 0 18px ${b.color}66` : "none",
+                        }}
+                      >
+                        {b.code.slice(0, 3)}
+                      </div>
+                      <span className="vants-pill" style={{ borderColor: b.color, color: b.color }}>
+                        {b.rareza.toUpperCase()}
+                      </span>
+                      <div style={{ fontWeight: 800, fontSize: 13 }}>{b.nombre}</div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.35 }}>{b.descripcion}</div>
+                      <div style={{ fontSize: 10, color: unlocked ? "var(--green)" : "var(--muted)", fontWeight: 700 }}>
+                        {unlocked ? "✓ DESBLOQUEADA" : `Requisito: ${b.requisito}`}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

@@ -57,8 +57,14 @@ jobs:
           $tag = "${{ steps.ver.outputs.tag }}"
           $exe = "apps/desktop/release/VANTS-Setup-$v.exe"
           if (!(Test-Path $exe)) { throw "No se generó $exe" }
+          Copy-Item $exe "apps/desktop/release/VANTS-Install-$v.exe" -Force
+          Copy-Item $exe "apps/desktop/release/VANTS-Install.exe" -Force
           $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToUpper()
-          "$hash  VANTS-Setup-$v.exe" | Out-File -Encoding utf8 "apps/desktop/release/SHA256SUMS.txt"
+          @(
+            "$hash  VANTS-Setup-$v.exe",
+            "$hash  VANTS-Install-$v.exe",
+            "$hash  VANTS-Install.exe"
+          ) | Out-File -Encoding utf8 "apps/desktop/release/SHA256SUMS.txt"
 
           $outDir = "apps/desktop/release/winget"
           New-Item -ItemType Directory -Force -Path $outDir | Out-Null
@@ -122,6 +128,7 @@ jobs:
           generate_release_notes: true
           files: |
             apps/desktop/release/VANTS-Setup-*.exe
+            apps/desktop/release/VANTS-Install*.exe
             apps/desktop/release/latest.yml
             apps/desktop/release/*.blockmap
             apps/desktop/release/SHA256SUMS.txt

@@ -46,10 +46,13 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
+      "runAfterFinish": true,
       "shortcutName": "VANTS",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
+      "installerHeaderIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "installerHeader": "build/installerHeader.bmp"
     },
     "publish": [
       {
