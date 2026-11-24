@@ -1,17 +1,15 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "cc.vants.banter",
-  appName: "Banter",
+  appId: "cc.vants.movil",
+  appName: "VANTS Movil",
   webDir: "../web/dist",
   server: {
     androidScheme: "https",
   },
-  plugins: {
-    AdMob: {
-      // IDs de prueba oficiales de Google AdMob; sustituir por los IDs de producción al publicar en Google Play.
-      initializeForTesting: true,
-    },
+  android: {
+    allowMixedContent: false,
+    backgroundColor: "#0A0A0B",
   },
 };
 

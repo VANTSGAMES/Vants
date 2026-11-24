@@ -8,3 +8,6 @@ apps/desktop/out/
 apps/desktop/release/
 *.log
 .DS_Store
+
+!apps/desktop/build/
+!apps/desktop/build/*

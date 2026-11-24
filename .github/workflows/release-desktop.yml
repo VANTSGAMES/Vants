@@ -43,7 +43,7 @@ jobs:
           npm test
           npm run build:web
 
-      - name: Generar instalador Windows NSIS (Banter-Setup.exe)
+      - name: Generar instalador Windows NSIS (VANTS-Setup.exe)
         shell: pwsh
         run: |
           $v = "${{ steps.ver.outputs.version }}"
@@ -55,14 +55,14 @@ jobs:
         run: |
           $v = "${{ steps.ver.outputs.version }}"
           $tag = "${{ steps.ver.outputs.tag }}"
-          $exe = "apps/desktop/release/Banter-Setup-$v.exe"
+          $exe = "apps/desktop/release/VANTS-Setup-$v.exe"
           if (!(Test-Path $exe)) { throw "No se generó $exe" }
           $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToUpper()
-          "$hash  Banter-Setup-$v.exe" | Out-File -Encoding utf8 "apps/desktop/release/SHA256SUMS.txt"
+          "$hash  VANTS-Setup-$v.exe" | Out-File -Encoding utf8 "apps/desktop/release/SHA256SUMS.txt"
 
           $outDir = "apps/desktop/release/winget"
           New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-          $url = "https://github.com/VANTSGAMES/banter/releases/download/$tag/Banter-Setup-$v.exe"
+          $url = "https://github.com/VANTSGAMES/banter/releases/download/$tag/VANTS-Setup-$v.exe"
 
           @"
           # Created for microsoft/winget-pkgs
@@ -101,15 +101,14 @@ jobs:
           PublisherUrl: https://vants.cc
           PublisherSupportUrl: https://github.com/VANTSGAMES/banter/issues
           PrivacyUrl: https://vants.cc/privacidad
-          PackageName: Banter
-          PackageUrl: https://github.com/VANTSGAMES/banter
+          PackageName: VANTS
+          PackageUrl: https://vants.cc
           License: Proprietary
-          ShortDescription: Banter multiplatform desktop client for the VANTS GAMES ecosystem.
+          ShortDescription: VANTS GAMES desktop client for Windows (torneos, comunidad, clips y ecosistema VANTS).
           Tags:
             - gaming
             - esports
             - community
-            - banter
             - vants
           ManifestType: defaultLocale
           ManifestVersion: 1.9.0
@@ -119,10 +118,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          name: Banter Desktop ${{ steps.ver.outputs.tag }}
+          name: VANTS PC ${{ steps.ver.outputs.tag }}
           generate_release_notes: true
           files: |
-            apps/desktop/release/Banter-Setup-*.exe
+            apps/desktop/release/VANTS-Setup-*.exe
             apps/desktop/release/latest.yml
             apps/desktop/release/*.blockmap
             apps/desktop/release/SHA256SUMS.txt
@@ -146,4 +145,4 @@ jobs:
         with:
           identifier: VANTSGAMES.Banter
           token: ${{ secrets.WINGET_GITHUB_TOKEN }}
-          installers-regex: 'Banter-Setup-.*\.exe$'
+          installers-regex: 'VANTS-Setup-.*\.exe$'
