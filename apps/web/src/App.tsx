@@ -14,7 +14,65 @@ import {
   type ShieldReport,
 } from "./lib/vantsApi";
 
-type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking" | "shield";
+type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking" | "planes" | "shield";
+
+interface PlanCard {
+  id: string;
+  nombre: string;
+  badge: string;
+  color: string;
+  destacado?: boolean;
+  beneficios: string[];
+}
+
+const PLANES_VANTS: PlanCard[] = [
+  {
+    id: "pase",
+    nombre: "PASE S4",
+    badge: "TEMPORADA",
+    color: "#4cc9f0",
+    beneficios: [
+      "Insignia oficial PLUS en tu perfil VANTS",
+      "2 Shorts automáticos y 2 optimizaciones SEO al día",
+      "Acceso a misiones y recompensas de temporada",
+    ],
+  },
+  {
+    id: "pro",
+    nombre: "VANTS PRO",
+    badge: "MÁS POPULAR",
+    color: "#ff0d2e",
+    destacado: true,
+    beneficios: [
+      "Sello PRO junto a tu nick y ficha pública",
+      "0% fee en inscripciones a torneos abiertos",
+      "Cola prioritaria en VANTS Ranked + 3 Shorts/día",
+      "Crea tus propios torneos de comunidad",
+    ],
+  },
+  {
+    id: "creator",
+    nombre: "VANTS CREATOR",
+    badge: "CREADORES",
+    color: "#b44cff",
+    beneficios: [
+      "Sello CREATOR y difusión automática en Discord",
+      "5 Shorts automáticos y 5 optimizaciones SEO al día",
+      "Prioridad en vitrina de clips y directos VANTS",
+    ],
+  },
+  {
+    id: "socio",
+    nombre: "SOCIO VANTS",
+    badge: "INVITACIÓN",
+    color: "#f5c044",
+    beneficios: [
+      "Sello mítico SOCIO VANTS y voto en el circuito",
+      "Acceso al canal privado de socios en Discord",
+      "15 Shorts automáticos y 15 optimizaciones SEO al día",
+    ],
+  },
+];
 
 interface GameEntry {
   id: string;
@@ -227,6 +285,7 @@ export function App() {
     { id: "clips", label: isPc ? "Clips PC" : "Clips", icon: "🎬", badge: isPc && localClips.length ? String(localClips.length) : undefined },
     { id: "directos", label: "Directos", icon: "🔴", badge: vivos.length ? String(vivos.length) : undefined, live: vivos.length > 0 },
     { id: "ranking", label: "Ranking", icon: "🏆" },
+    { id: "planes", label: "Planes", icon: "⭐" },
     ...(isPc
       ? [
           {
@@ -580,6 +639,46 @@ export function App() {
                     <div className="rank-metrics">
                       {j.nivel != null && <span className="vants-pill ok">LVL {j.nivel}</span>}
                       {j.elo != null && <span>{j.elo} ELO</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "planes" && (
+            <>
+              <div className="section-head">
+                <h2>⭐ Membresías y Planes VANTS</h2>
+                <button type="button" className="btn primary" onClick={() => openUrl("https://vants.cc/membresias")}>
+                  Gestionar en vants.cc ↗
+                </button>
+              </div>
+              <div className="grid-cards">
+                {PLANES_VANTS.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="card"
+                    style={plan.destacado ? { borderColor: "rgba(255, 13, 46, 0.6)" } : undefined}
+                  >
+                    <div className="game-accent" style={{ background: plan.color }} />
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <h3 className="card-title">{plan.nombre}</h3>
+                      <span className="vants-pill">{plan.badge}</span>
+                    </div>
+                    <ul style={{ margin: "4px 0 8px", paddingLeft: 18, color: "var(--muted)", fontSize: 12, lineHeight: 1.6 }}>
+                      {plan.beneficios.map((b) => (
+                        <li key={b}>{b}</li>
+                      ))}
+                    </ul>
+                    <div className="btn-row">
+                      <button
+                        type="button"
+                        className={`btn ${plan.destacado ? "primary" : ""}`}
+                        onClick={() => openUrl("https://vants.cc/membresias")}
+                      >
+                        Activar en vants.cc ↗
+                      </button>
                     </div>
                   </div>
                 ))}

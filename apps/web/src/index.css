@@ -488,8 +488,8 @@ body,
     background: #0d0d10;
     border-top: 1px solid var(--border);
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    padding: 6px 6px env(safe-area-inset-bottom, 6px);
+    grid-template-columns: repeat(6, 1fr);
+    padding: 6px 4px env(safe-area-inset-bottom, 6px);
     z-index: 40;
   }
 
