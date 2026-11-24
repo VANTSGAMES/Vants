@@ -73,6 +73,7 @@ export interface VantsDesktopBridge {
   onWindowState?: (listener: (state: { maximized: boolean }) => void) => () => void;
   launchGame: (gameId: string) => Promise<{ ok: boolean; error?: string }>;
   openExternal: (url: string) => Promise<{ ok: boolean; error?: string }>;
+  openInAppModal?: (url: string) => Promise<{ ok: boolean; error?: string }>;
   scanCortexClips: () => Promise<{ folders: string[]; clips: LocalClipItem[] }>;
   openClipFile: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
   revealClipFolder: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
@@ -100,6 +101,15 @@ export function openUrl(url: string): void {
     return;
   }
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+export function openInApp(url: string): void {
+  const bridge = getDesktopBridge();
+  if (bridge && bridge.openInAppModal) {
+    void bridge.openInAppModal(url);
+    return;
+  }
+  window.location.href = url;
 }
 
 function readCache<T>(key: string): T | null {

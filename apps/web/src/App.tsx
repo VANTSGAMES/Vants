@@ -5,6 +5,7 @@ import {
   fetchEquiposFaceit,
   fetchJugadores,
   getDesktopBridge,
+  openInApp,
   openUrl,
   type ClipComunidadItem,
   type DirectoItem,
@@ -650,8 +651,8 @@ export function App() {
             <>
               <div className="section-head">
                 <h2>⭐ Membresías y Planes VANTS</h2>
-                <button type="button" className="btn primary" onClick={() => openUrl("https://vants.cc/membresias")}>
-                  Gestionar en vants.cc ↗
+                <button type="button" className="btn primary" onClick={() => openInApp("https://vants.cc/membresias")}>
+                  Abrir membresías aquí
                 </button>
               </div>
               <div className="grid-cards">
@@ -675,9 +676,9 @@ export function App() {
                       <button
                         type="button"
                         className={`btn ${plan.destacado ? "primary" : ""}`}
-                        onClick={() => openUrl("https://vants.cc/membresias")}
+                        onClick={() => openInApp("https://vants.cc/membresias")}
                       >
-                        Activar en vants.cc ↗
+                        Activar {plan.nombre}
                       </button>
                     </div>
                   </div>

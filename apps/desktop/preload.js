@@ -13,9 +13,10 @@ const desktopApi = {
     return () => ipcRenderer.removeListener('vants:win-state', handler);
   },
 
-  // Lanzador rápido de juegos de PC y enlaces externos seguros
+  // Lanzador rápido de juegos de PC, ventana integrada y enlaces externos seguros
   launchGame: (gameId) => ipcRenderer.invoke('vants:launch-game', String(gameId || '')),
   openExternal: (url) => ipcRenderer.invoke('vants:open-external', String(url || '')),
+  openInAppModal: (url) => ipcRenderer.invoke('vants:open-inapp-modal', String(url || '')),
 
   // Detector y gestión de clips locales (Razer Cortex / Capturas de Windows)
   scanCortexClips: () => ipcRenderer.invoke('banter:scan-cortex-clips'),

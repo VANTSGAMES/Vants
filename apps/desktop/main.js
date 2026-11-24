@@ -259,6 +259,33 @@ ipcMain.handle('vants:open-external', async (_evt, url) => {
   }
 });
 
+// Ventana modal integrada dentro de VANTS.exe para membresías / perfil sin salir de la app
+ipcMain.handle('vants:open-inapp-modal', (_evt, url) => {
+  const safe = String(url || '').trim();
+  if (!/^https:\/\/(www\.)?vants\.cc(\/|$)/i.test(safe)) {
+    return { ok: false, error: 'url_no_permitida' };
+  }
+  const modal = new BrowserWindow({
+    width: 1120,
+    height: 780,
+    minWidth: 760,
+    minHeight: 580,
+    parent: mainWindow || undefined,
+    modal: false,
+    autoHideMenuBar: true,
+    backgroundColor: '#0A0A0B',
+    title: 'VANTS GAMES · Membresías',
+    icon: path.join(__dirname, 'build', 'icon.png'),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  modal.loadURL(safe).catch(() => {});
+  return { ok: true };
+});
+
 // ── IPC: Clips locales (Razer Cortex / Capturas) ─────────────────────────────
 ipcMain.handle('banter:scan-cortex-clips', () => scanCortexClipsLocal());
 
