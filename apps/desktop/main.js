@@ -222,7 +222,9 @@ function createMainWindow() {
     minWidth: 1024,
     minHeight: 680,
     backgroundColor: '#0a0a0b',
-    title: 'Banter Desktop — VANTS Ecosystem',
+    title: 'VANTS GAMES — PC',
+    icon: path.join(__dirname, 'build', 'icon.png'),
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -234,11 +236,12 @@ function createMainWindow() {
   if (devUrl) {
     mainWindow.loadURL(devUrl);
   } else {
-    const packagedDist = path.resolve(__dirname, 'web-dist/index.html');
-    const workspaceDist = path.resolve(__dirname, '../web/dist/index.html');
-    mainWindow.loadFile(packagedDist).catch(() => {
-      mainWindow.loadFile(workspaceDist).catch(() => {
-        mainWindow.loadURL(BANTER_ORIGIN);
+    // Carga la web oficial https://vants.cc organizada para PC; si no hay red cae al bundle local.
+    mainWindow.loadURL(BANTER_ORIGIN).catch(() => {
+      const packagedDist = path.resolve(__dirname, 'web-dist/index.html');
+      const workspaceDist = path.resolve(__dirname, '../web/dist/index.html');
+      mainWindow.loadFile(packagedDist).catch(() => {
+        mainWindow.loadFile(workspaceDist).catch(() => {});
       });
     });
   }

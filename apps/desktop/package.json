@@ -10,8 +10,9 @@
     "dist:win": "electron-builder --win nsis --x64 --publish never"
   },
   "build": {
-    "appId": "cc.vants.banter.desktop",
-    "productName": "Banter",
+    "appId": "cc.vants.desktop",
+    "productName": "VANTS",
+    "executableName": "VANTS",
     "electronVersion": "35.7.5",
     "npmRebuild": false,
     "copyright": "Copyright © 2026 VANTS GAMES",
@@ -22,6 +23,7 @@
       "main.js",
       "preload.js",
       "package.json",
+      "build/icon.png",
       {
         "from": "../web/dist",
         "to": "web-dist",
@@ -29,13 +31,14 @@
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
           "arch": ["x64"]
         }
       ],
-      "artifactName": "Banter-Setup-${version}.exe"
+      "artifactName": "VANTS-Setup-${version}.exe"
     },
     "nsis": {
       "oneClick": false,
@@ -43,7 +46,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Banter"
+      "shortcutName": "VANTS",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     },
     "publish": [
       {
