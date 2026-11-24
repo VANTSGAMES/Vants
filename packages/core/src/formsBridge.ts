@@ -42,7 +42,7 @@ export function validateRequestPayload(p: BanterRequestPayload): string | null {
   return null;
 }
 
-export const DEFAULT_BANTER_MOTOR_URL = "https://vantsbot.vants.workers.dev";
+export const DEFAULT_BANTER_MOTOR_URL = "https://bot.vants.cc";
 
 /**
  * Envía el registro o solicitud al motor Cloudflare `vantsbot` (que guarda en D1,
