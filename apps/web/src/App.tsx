@@ -84,14 +84,14 @@ interface GameEntry {
   webFallback: string;
 }
 
-const GAMES: GameEntry[] = [
+const PC_GAMES: GameEntry[] = [
   {
     id: "valorant",
     name: "VALORANT",
     subtitle: "Riot Client · Competitivo y torneos VANTS",
     accent: "#ff4655",
     platformLabel: "Riot Client",
-    webFallback: "https://vants.cc/juegos",
+    webFallback: "https://vants.cc/torneos?juego=valorant",
   },
   {
     id: "cs2",
@@ -99,7 +99,7 @@ const GAMES: GameEntry[] = [
     subtitle: "Steam · FACEIT CS2 y Ranking VANTS",
     accent: "#f5c044",
     platformLabel: "Steam",
-    webFallback: "https://www.faceit.com/es/cs2",
+    webFallback: "https://vants.cc/torneos?juego=cs2",
   },
   {
     id: "fortnite",
@@ -107,7 +107,7 @@ const GAMES: GameEntry[] = [
     subtitle: "Epic Games · Battle Royale y Arena",
     accent: "#9d4dff",
     platformLabel: "Epic Games",
-    webFallback: "https://vants.cc/juegos",
+    webFallback: "https://vants.cc/torneos?juego=fortnite",
   },
   {
     id: "lol",
@@ -115,7 +115,7 @@ const GAMES: GameEntry[] = [
     subtitle: "Riot Client · Grieta del Invocador",
     accent: "#4cc9f0",
     platformLabel: "Riot Client",
-    webFallback: "https://vants.cc/juegos",
+    webFallback: "https://vants.cc/torneos?juego=lol",
   },
   {
     id: "rocketleague",
@@ -123,7 +123,7 @@ const GAMES: GameEntry[] = [
     subtitle: "Epic Games · Torneos 2v2 / 3v3",
     accent: "#3ddc84",
     platformLabel: "Epic Games",
-    webFallback: "https://vants.cc/juegos",
+    webFallback: "https://vants.cc/torneos?juego=rocketleague",
   },
   {
     id: "steam",
@@ -132,6 +132,65 @@ const GAMES: GameEntry[] = [
     accent: "#66c0f4",
     platformLabel: "Biblioteca PC",
     webFallback: "https://store.steampowered.com",
+  },
+];
+
+const MOBILE_GAMES: GameEntry[] = [
+  {
+    id: "freefire",
+    name: "Free Fire",
+    subtitle: "Móvil · Salas, escuadras y torneos VANTS",
+    accent: "#ff9e2c",
+    platformLabel: "Android",
+    webFallback: "https://vants.cc/torneos?juego=freefire",
+  },
+  {
+    id: "mlbb",
+    name: "Mobile Legends",
+    subtitle: "Móvil · Circuito 5v5 LATAM",
+    accent: "#4cc9f0",
+    platformLabel: "Android",
+    webFallback: "https://vants.cc/torneos?juego=mlbb",
+  },
+  {
+    id: "wildrift",
+    name: "League of Legends: Wild Rift",
+    subtitle: "Móvil · Torneos competitivos",
+    accent: "#3ddc84",
+    platformLabel: "Android",
+    webFallback: "https://vants.cc/torneos?juego=wildrift",
+  },
+  {
+    id: "clashroyale",
+    name: "Clash Royale",
+    subtitle: "Móvil · Copas 1v1 y ligas VANTS",
+    accent: "#f5c044",
+    platformLabel: "Android",
+    webFallback: "https://vants.cc/torneos?juego=clashroyale",
+  },
+  {
+    id: "valorant",
+    name: "VALORANT",
+    subtitle: "Circuito VANTS · Brackets y resultados",
+    accent: "#ff4655",
+    platformLabel: "Circuito VANTS",
+    webFallback: "https://vants.cc/torneos?juego=valorant",
+  },
+  {
+    id: "cs2",
+    name: "Counter-Strike 2",
+    subtitle: "FACEIT CS2 · Ranking y partidas en vivo",
+    accent: "#ff0d2e",
+    platformLabel: "Circuito VANTS",
+    webFallback: "https://vants.cc/torneos?juego=cs2",
+  },
+  {
+    id: "fortnite",
+    name: "Fortnite",
+    subtitle: "Torneos Battle Royale y estadísticas",
+    accent: "#9d4dff",
+    platformLabel: "Circuito VANTS",
+    webFallback: "https://vants.cc/torneos?juego=fortnite",
   },
 ];
 
@@ -280,9 +339,11 @@ export function App() {
     }
   };
 
+  const activeGames = isPc ? PC_GAMES : MOBILE_GAMES;
+
   const navItems: Array<{ id: TabId; label: string; icon: string; badge?: string; live?: boolean }> = [
     { id: "inicio", label: "Inicio", icon: "⚡" },
-    { id: "juegos", label: isPc ? "Lanzador PC" : "Juegos", icon: "🎮" },
+    { id: "juegos", label: isPc ? "Lanzador PC" : "Torneos", icon: "🎮" },
     { id: "clips", label: isPc ? "Clips PC" : "Clips", icon: "🎬", badge: isPc && localClips.length ? String(localClips.length) : undefined },
     { id: "directos", label: "Directos", icon: "🔴", badge: vivos.length ? String(vivos.length) : undefined, live: vivos.length > 0 },
     { id: "ranking", label: "Ranking", icon: "🏆" },
@@ -298,6 +359,15 @@ export function App() {
           },
         ]
       : []),
+  ];
+
+  // Barra inferior Android (5 pestañas táctiles cómodas >= 48px, sin elementos de PC)
+  const mobileBottomNav: Array<{ id: TabId; label: string; icon: string }> = [
+    { id: "inicio", label: "Inicio", icon: "⚡" },
+    { id: "juegos", label: "Torneos", icon: "🎮" },
+    { id: "directos", label: "En vivo", icon: "🔴" },
+    { id: "ranking", label: "Ranking", icon: "🏆" },
+    { id: "planes", label: "Planes", icon: "⭐" },
   ];
 
   return (
@@ -429,7 +499,7 @@ export function App() {
 
               {isPc ? (
                 <div className="grid-cards">
-                  {GAMES.slice(0, 3).map((g) => (
+                  {PC_GAMES.slice(0, 3).map((g) => (
                     <div key={g.id} className="card">
                       <div className="game-accent" style={{ background: g.accent }} />
                       <h3 className="card-title">{g.name}</h3>
@@ -470,17 +540,17 @@ export function App() {
           {tab === "juegos" && (
             <>
               <div className="section-head">
-                <h2>{isPc ? "Lanzador Rápido de Juegos (PC)" : "Títulos del Circuito VANTS"}</h2>
+                <h2>{isPc ? "Lanzador Rápido de Juegos (PC)" : "Torneos Móvil & Esports VANTS"}</h2>
               </div>
               <div className="grid-cards">
-                {GAMES.map((g) => (
+                {activeGames.map((g) => (
                   <div key={g.id} className="card">
                     <div className="game-accent" style={{ background: g.accent }} />
                     <h3 className="card-title">{g.name}</h3>
                     <p className="card-meta">{g.subtitle}</p>
                     <div className="btn-row">
                       <button type="button" className="btn primary" onClick={() => void handleLaunchGame(g)}>
-                        {isPc ? `▶ Abrir ${g.name}` : "Ver circuito ↗"}
+                        {isPc ? `▶ Abrir ${g.name}` : "Ver torneos ↗"}
                       </button>
                     </div>
                   </div>
@@ -772,16 +842,16 @@ export function App() {
         </main>
       </div>
 
-      {/* Navegación inferior exclusiva de Móvil */}
+      {/* Navegación inferior nativa de Android (5 pestañas táctiles) */}
       <nav className="vants-bottom-nav">
-        {navItems.map((item) => (
+        {mobileBottomNav.map((item) => (
           <button
             key={item.id}
             type="button"
             className={`bottom-btn ${tab === item.id ? "active" : ""}`}
             onClick={() => setTab(item.id)}
           >
-            <span style={{ fontSize: 16 }}>{item.icon}</span>
+            <span style={{ fontSize: 18 }}>{item.icon}</span>
             <span>{item.label}</span>
           </button>
         ))}
