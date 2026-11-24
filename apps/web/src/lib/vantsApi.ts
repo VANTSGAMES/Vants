@@ -52,6 +52,18 @@ export interface LocalClipItem {
   mtimeMs: number;
 }
 
+export interface ShieldReport {
+  status: "clean" | "flagged";
+  code: string;
+  checkedAt: string;
+  appVersion: string;
+  packaged: boolean;
+  platform: string;
+  processCount: number;
+  activeAntiCheats: Array<{ id: string; name: string }>;
+  flaggedTools: Array<{ label: string; process: string }>;
+}
+
 export interface VantsDesktopBridge {
   platform: string;
   minimize: () => Promise<{ ok: boolean }>;
@@ -64,6 +76,7 @@ export interface VantsDesktopBridge {
   scanCortexClips: () => Promise<{ folders: string[]; clips: LocalClipItem[] }>;
   openClipFile: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
   revealClipFolder: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
+  runShieldCheck: () => Promise<ShieldReport>;
   getAppVersion: () => Promise<{ version: string; packaged: boolean }>;
   checkForUpdates: () => Promise<{ supported: boolean; currentVersion?: string; latestVersion?: string | null; error?: string }>;
   installUpdate: () => Promise<{ ok: boolean }>;

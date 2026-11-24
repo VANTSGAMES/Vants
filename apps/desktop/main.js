@@ -11,6 +11,8 @@
  */
 
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { execFile } = require('node:child_process');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -23,6 +25,22 @@ try {
 }
 
 const VIDEO_EXTS = new Set(['.mp4', '.mkv', '.mov', '.ts', '.m4v', '.webm']);
+
+const OFFICIAL_ANTICHEATS = [
+  { id: 'vanguard', name: 'Riot Vanguard', procs: ['vgtray.exe', 'vgc.exe'] },
+  { id: 'faceit', name: 'FACEIT Anti-Cheat', procs: ['faceitclient.exe', 'faceitservice.exe'] },
+  { id: 'eac', name: 'Easy Anti-Cheat', procs: ['easyanticheat.exe', 'easyanticheat_eos.exe'] },
+  { id: 'battleye', name: 'BattlEye', procs: ['beservice.exe'] },
+];
+
+const FLAGGED_TOOLS = [
+  { label: 'Cheat Engine', match: /^cheatengine/i },
+  { label: 'x64dbg / x32dbg', match: /^x(64|32)dbg\.exe$/i },
+  { label: 'OllyDbg', match: /^ollydbg\.exe$/i },
+  { label: 'Process Hacker / System Informer', match: /^(processhacker|systeminformer)\.exe$/i },
+  { label: 'DLL Injector', match: /(extreme.?injector|gh_injector|process.?injector)/i },
+  { label: 'ArtMoney / WeMod', match: /^(artmoney|wemod)/i },
+];
 
 const GAME_URIS = {
   cs2: 'steam://rungameid/730',
@@ -259,6 +277,83 @@ ipcMain.handle('vants:reveal-clip', (_evt, filePath) => {
   shell.showItemInFolder(filePath);
   return { ok: true };
 });
+
+function listUserProcesses() {
+  return new Promise((resolve) => {
+    if (process.platform === 'win32') {
+      execFile('tasklist', ['/FO', 'CSV', '/NH'], { timeout: 5000, maxBuffer: 2 * 1024 * 1024 }, (err, stdout) => {
+        if (err || !stdout) return resolve([]);
+        const names = new Set();
+        for (const line of String(stdout).split(/\r?\n/)) {
+          const m = line.match(/^"([^"]+)"/);
+          if (m && m[1]) names.add(m[1].trim().toLowerCase());
+        }
+        resolve([...names]);
+      });
+      return;
+    }
+    execFile('ps', ['-eo', 'comm='], { timeout: 5000 }, (err, stdout) => {
+      if (err || !stdout) return resolve([]);
+      const names = new Set(
+        String(stdout)
+          .split(/\r?\n/)
+          .map((l) => l.trim().toLowerCase())
+          .filter(Boolean),
+      );
+      resolve([...names]);
+    });
+  });
+}
+
+async function runVantsShieldCheck() {
+  const procs = await listUserProcesses();
+  const procSet = new Set(procs);
+  const activeAntiCheats = OFFICIAL_ANTICHEATS.filter((ac) => ac.procs.some((p) => procSet.has(p))).map((ac) => ({
+    id: ac.id,
+    name: ac.name,
+  }));
+  const flaggedTools = [];
+  for (const proc of procs) {
+    for (const rule of FLAGGED_TOOLS) {
+      if (rule.match.test(proc)) {
+        flaggedTools.push({ label: rule.label, process: proc });
+        break;
+      }
+    }
+  }
+  const checkedAt = new Date().toISOString();
+  const status = flaggedTools.length === 0 ? 'clean' : 'flagged';
+  const digest = crypto
+    .createHash('sha256')
+    .update(
+      JSON.stringify({
+        status,
+        appVersion: app.getVersion(),
+        packaged: app.isPackaged,
+        activeAntiCheats: activeAntiCheats.map((a) => a.id),
+        flaggedCount: flaggedTools.length,
+        checkedAt,
+      }),
+    )
+    .digest('hex')
+    .slice(0, 16)
+    .toUpperCase();
+
+  return {
+    status,
+    code: `VANTS-SHIELD-${digest}`,
+    checkedAt,
+    appVersion: app.getVersion(),
+    packaged: app.isPackaged,
+    platform: process.platform,
+    processCount: procs.length,
+    activeAntiCheats,
+    flaggedTools,
+  };
+}
+
+// ── IPC: VANTS Shield (verificación de integridad en modo usuario) ───────────
+ipcMain.handle('vants:shield-check', () => runVantsShieldCheck());
 
 // ── IPC: Versión y auto-actualización ────────────────────────────────────────
 ipcMain.handle('banter:app-version', () => ({ version: app.getVersion(), packaged: app.isPackaged }));

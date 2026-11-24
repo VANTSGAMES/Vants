@@ -22,6 +22,9 @@ const desktopApi = {
   openClipFile: (filePath) => ipcRenderer.invoke('vants:open-clip', String(filePath || '')),
   revealClipFolder: (filePath) => ipcRenderer.invoke('vants:reveal-clip', String(filePath || '')),
 
+  // VANTS Shield (verificación de integridad competitiva en modo usuario)
+  runShieldCheck: () => ipcRenderer.invoke('vants:shield-check'),
+
   // Versión y auto-actualización vía GitHub Releases (electron-updater)
   getAppVersion: () => ipcRenderer.invoke('banter:app-version'),
   checkForUpdates: () => ipcRenderer.invoke('banter:check-updates'),

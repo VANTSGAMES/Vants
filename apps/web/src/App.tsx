@@ -11,9 +11,10 @@ import {
   type EquipoFaceitItem,
   type JugadorItem,
   type LocalClipItem,
+  type ShieldReport,
 } from "./lib/vantsApi";
 
-type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking";
+type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking" | "shield";
 
 interface GameEntry {
   id: string;
@@ -92,10 +93,12 @@ export function App() {
   const [offline, setOffline] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Exclusivo PC: clips locales en disco (Razer Cortex / Capturas)
+  // Exclusivo PC: clips locales en disco (Razer Cortex / Capturas) y VANTS Shield
   const [localClips, setLocalClips] = useState<LocalClipItem[]>([]);
   const [localFolders, setLocalFolders] = useState<string[]>([]);
   const [scanningClips, setScanningClips] = useState(false);
+  const [shieldReport, setShieldReport] = useState<ShieldReport | null>(null);
+  const [checkingShield, setCheckingShield] = useState(false);
 
   const [searchRank, setSearchRank] = useState("");
   const [clipFilter, setClipFilter] = useState("todos");
@@ -135,10 +138,47 @@ export function App() {
     }
   };
 
+  const runShield = async () => {
+    if (!desktop || !desktop.runShieldCheck) return;
+    setCheckingShield(true);
+    try {
+      const report = await desktop.runShieldCheck();
+      setShieldReport(report);
+      showToast(
+        report.status === "clean"
+          ? `VANTS Shield: entorno limpio (${report.code})`
+          : `VANTS Shield: cierra las herramientas detectadas antes de competir.`,
+      );
+    } catch {
+      showToast("Error al ejecutar VANTS Shield.");
+    } finally {
+      setCheckingShield(false);
+    }
+  };
+
+  const copyShieldProof = async () => {
+    if (!shieldReport) return;
+    const acNames = shieldReport.activeAntiCheats.map((a) => a.name).join(", ") || "Ninguno activo aún";
+    const text = [
+      `[VANTS Shield · ${shieldReport.status === "clean" ? "LIMPIO" : "ALERTA"}]`,
+      `Código: ${shieldReport.code}`,
+      `Fecha UTC: ${shieldReport.checkedAt}`,
+      `Versión: VANTS PC v${shieldReport.appVersion}`,
+      `Anti-Cheats detectados: ${acNames}`,
+    ].join(" | ");
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("Comprobante VANTS Shield copiado al portapapeles.");
+    } catch {
+      showToast("No se pudo copiar al portapapeles.");
+    }
+  };
+
   useEffect(() => {
     void refreshData();
     if (desktop) {
       void scanLocalClips();
+      void runShield();
       desktop.getAppVersion().then((r) => setAppVersion(r.version)).catch(() => {});
       desktop.isMaximized().then((r) => setMaximized(Boolean(r.maximized))).catch(() => {});
       const offWin = desktop.onWindowState?.((s) => setMaximized(Boolean(s.maximized)));
@@ -187,6 +227,17 @@ export function App() {
     { id: "clips", label: isPc ? "Clips PC" : "Clips", icon: "🎬", badge: isPc && localClips.length ? String(localClips.length) : undefined },
     { id: "directos", label: "Directos", icon: "🔴", badge: vivos.length ? String(vivos.length) : undefined, live: vivos.length > 0 },
     { id: "ranking", label: "Ranking", icon: "🏆" },
+    ...(isPc
+      ? [
+          {
+            id: "shield" as TabId,
+            label: "VANTS Shield",
+            icon: "🛡️",
+            badge: shieldReport ? (shieldReport.status === "clean" ? "OK" : "!") : undefined,
+            live: shieldReport?.status === "flagged",
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -533,6 +584,89 @@ export function App() {
                   </div>
                 ))}
               </div>
+            </>
+          )}
+
+          {tab === "shield" && isPc && (
+            <>
+              <div className="section-head">
+                <h2>🛡️ VANTS Shield · Integridad Competitiva (Modo Usuario)</h2>
+                <button type="button" className="btn primary" onClick={() => void runShield()} disabled={checkingShield}>
+                  {checkingShield ? "Verificando…" : "↻ Ejecutar verificación"}
+                </button>
+              </div>
+
+              <div className="hero-card">
+                <div>
+                  <h1 style={{ color: shieldReport?.status === "flagged" ? "var(--red)" : "var(--green)" }}>
+                    {!shieldReport
+                      ? "Pendiente de verificación"
+                      : shieldReport.status === "clean"
+                        ? "Entorno Limpio · Verificado"
+                        : "Alerta · Cierra las herramientas detectadas"}
+                  </h1>
+                  <p>
+                    Verificación en modo usuario (sin drivers de kernel ni permisos de administrador) · 100% compatible con
+                    Microsoft Store.
+                  </p>
+                </div>
+                {shieldReport && (
+                  <div className="btn-row">
+                    <button type="button" className="btn primary" onClick={() => void copyShieldProof()}>
+                      📋 Copiar comprobante ({shieldReport.code})
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {shieldReport && (
+                <div className="grid-cards">
+                  <div className="card">
+                    <h3 className="card-title">Código SHA-256 de torneo</h3>
+                    <p className="card-meta" style={{ fontFamily: "monospace", color: "var(--text)", fontSize: 13 }}>
+                      {shieldReport.code}
+                    </p>
+                    <p className="card-meta">
+                      Comprobado: {new Date(shieldReport.checkedAt).toLocaleString("es-ES")} · VANTS PC v
+                      {shieldReport.appVersion}
+                    </p>
+                  </div>
+
+                  <div className="card">
+                    <h3 className="card-title">Anti-Cheats oficiales detectados</h3>
+                    {shieldReport.activeAntiCheats.length ? (
+                      <div className="btn-row">
+                        {shieldReport.activeAntiCheats.map((ac) => (
+                          <span key={ac.id} className="vants-pill ok">
+                            ✓ {ac.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="card-meta">
+                        Ningún anti-cheat de juego activo ahora (se activan al abrir VALORANT, FACEIT AC o Fortnite).
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="card">
+                    <h3 className="card-title">
+                      Procesos revisados ({shieldReport.processCount})
+                    </h3>
+                    {shieldReport.flaggedTools.length === 0 ? (
+                      <p className="card-meta" style={{ color: "var(--green)" }}>
+                        ✓ Sin debuggers, editores de memoria ni injectors detectados en tu sesión.
+                      </p>
+                    ) : (
+                      shieldReport.flaggedTools.map((f) => (
+                        <p key={f.process} className="card-meta" style={{ color: "var(--red)" }}>
+                          ⚠ {f.label} ({f.process}) — ciérralo y vuelve a verificar.
+                        </p>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </main>
