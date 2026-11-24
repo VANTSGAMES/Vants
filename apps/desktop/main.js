@@ -1,17 +1,16 @@
 /**
- * Banter Desktop (Electron) — Cumplimiento oficial NitroPay by Overwolf
+ * VANTS PC (Electron) — Aplicación nativa 100% independiente de la web
  * -----------------------------------------------------------------------------
- * Implementa todos los requisitos de https://nitropay.com/docs/electron-apps-and-nitropay/:
- *   1. Anuncios servidos desde un dominio aprobado (BANTER_ORIGIN/app/nitro-ads.html), nunca file://.
- *   2. Ventana modal CMP (BANTER_ORIGIN/app/cmp.html) en la misma partición persist:adpartition.
- *   3. Eliminación del nombre de app y "Electron/x.y.z" del User-Agent del BrowserView de anuncios.
- *   4. Cabecera httpReferrer apuntando al dominio aprobado.
- *   5. Ancho del BrowserView >= 1280px para evitar clasificación errónea como móvil.
- *   6. Botón de preferencias GDPR vía IPC (`banter:resurface-cmp` -> cmp.html?resurface=1).
- *   7. Monetización híbrida: `banter:set-ad-free(true)` desmonta el BrowserView al instante para suscriptores Nitro.
+ * - Ventana frameless con barra superior nativa (minimizar, maximizar, cerrar).
+ * - Carga el bundle local (web-dist/index.html) sin depender de cargar vants.cc.
+ * - Funciones exclusivas de PC:
+ *     1) Detector local de clips (Razer Cortex, Capturas de Windows, VALORANT/CS2/Fortnite).
+ *     2) Lanzador rápido de juegos (CS2, VALORANT, Fortnite, LoL, Rocket League, Steam).
+ *     3) Abrir clips o revelar su carpeta en el Explorador de Windows.
+ *     4) Auto-actualización vía GitHub Releases (electron-updater).
  */
 
-const { app, BrowserWindow, BrowserView, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -23,19 +22,19 @@ try {
   autoUpdater = null;
 }
 
-const BANTER_ORIGIN = (process.env.BANTER_WEB_ORIGIN || 'https://vants.cc').replace(/\/$/, '');
-const SITE_ID = (process.env.NITROPAY_SITE_ID || '').trim();
-const DEMO_FLAG = SITE_ID ? '' : '&demo=1';
-const AD_URL = `${BANTER_ORIGIN}/app/nitro-ads.html?siteId=${encodeURIComponent(SITE_ID || 'demo')}${DEMO_FLAG}`;
-const CMP_URL = `${BANTER_ORIGIN}/app/cmp.html`;
-const REFERRER = `${BANTER_ORIGIN}/`;
-const AD_RAIL_WIDTH = 325;
 const VIDEO_EXTS = new Set(['.mp4', '.mkv', '.mov', '.ts', '.m4v', '.webm']);
 
+const GAME_URIS = {
+  cs2: 'steam://rungameid/730',
+  valorant: 'riotclient://launch-product=valorant&launch-patchline=live',
+  fortnite: 'com.epicgames.launcher://apps/Fortnite?action=launch&silent=true',
+  lol: 'riotclient://launch-product=league_of_legends&launch-patchline=live',
+  rocketleague: 'com.epicgames.launcher://apps/Sugar?action=launch&silent=true',
+  apex: 'steam://rungameid/1172470',
+  steam: 'steam://open/main',
+};
+
 let mainWindow = null;
-let adView = null;
-let isAdFree = false;
-let cmpCompleted = false;
 
 function emitUpdateStatus(payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -66,13 +65,29 @@ function setupAutoUpdater() {
     emitUpdateStatus({ state: 'error', message: String((err && err.message) || 'update_error') }),
   );
 
-  // Comprueba al arrancar y cada 4 horas mientras la app esté abierta.
   setTimeout(() => {
     autoUpdater.checkForUpdatesAndNotify().catch(() => {});
   }, 8000);
   setInterval(() => {
     autoUpdater.checkForUpdatesAndNotify().catch(() => {});
   }, 4 * 60 * 60 * 1000);
+}
+
+function getAllowedClipRoots() {
+  const roots = [];
+  const localApp = process.env.LOCALAPPDATA || '';
+  if (localApp) {
+    roots.push(path.join(localApp, 'Razer', 'Razer Cortex', 'GameClips'));
+  }
+  roots.push(path.join(os.homedir(), 'Videos'));
+  return roots.map((r) => path.resolve(r));
+}
+
+function isPathInsideAllowedRoots(targetPath) {
+  if (!targetPath || typeof targetPath !== 'string') return false;
+  const resolved = path.resolve(targetPath);
+  const roots = getAllowedClipRoots();
+  return roots.some((root) => resolved === root || resolved.startsWith(root + path.sep));
 }
 
 function scanCortexClipsLocal() {
@@ -94,14 +109,14 @@ function scanCortexClipsLocal() {
     }
   }
   const videosHome = path.join(os.homedir(), 'Videos');
-  for (const sub of ['VALORANT', 'Captures', 'Razer Cortex']) {
+  for (const sub of ['VALORANT', 'CS2', 'Fortnite', 'Captures', 'Razer Cortex']) {
     const p = path.join(videosHome, sub);
     if (fs.existsSync(p) && !dirs.includes(p)) dirs.push(p);
   }
 
   const clips = [];
   const walk = (dir, depth = 0) => {
-    if (depth > 3 || clips.length >= 25) return;
+    if (depth > 3 || clips.length >= 40) return;
     let entries = [];
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -130,180 +145,150 @@ function scanCortexClipsLocal() {
   };
   for (const d of dirs) walk(d, 0);
   clips.sort((a, b) => b.mtimeMs - a.mtimeMs);
-  return { folders: dirs, clips: clips.slice(0, 12) };
-}
-
-function positionAdView() {
-  if (!mainWindow || !adView || isAdFree) return;
-  const bounds = mainWindow.getContentBounds();
-  // Ancho lógico >= 1280px según recomendación oficial NitroPay Electron.
-  adView.setBounds({
-    x: Math.max(0, bounds.width - AD_RAIL_WIDTH),
-    y: 10,
-    width: 1280,
-    height: Math.max(540, bounds.height - 20),
-  });
-}
-
-function attachAdView() {
-  if (!mainWindow || isAdFree) return;
-  if (!adView) {
-    adView = new BrowserView({
-      webPreferences: {
-        partition: 'persist:adpartition',
-        contextIsolation: true,
-        nodeIntegration: false,
-      },
-    });
-    const re = new RegExp(`(${app.getName()}|Electron)/[\\d\\.]+ `, 'g');
-    adView.webContents.setUserAgent(adView.webContents.getUserAgent().replace(re, ''));
-  }
-  mainWindow.setBrowserView(adView);
-  positionAdView();
-  adView.webContents.loadURL(AD_URL, { httpReferrer: REFERRER }).catch(() => {});
-}
-
-function detachAdView() {
-  if (!mainWindow || !adView) return;
-  try {
-    mainWindow.removeBrowserView(adView);
-  } catch {
-    // ya desmontado
-  }
-  try {
-    adView.webContents.loadURL('about:blank').catch(() => {});
-  } catch {
-    // ignorar
-  }
-}
-
-function createCmpModal(resurface = false) {
-  if (!mainWindow) return null;
-  const cmp = new BrowserWindow({
-    width: 1120,
-    height: 600,
-    center: true,
-    closable: resurface,
-    skipTaskbar: true,
-    modal: true,
-    titleBarStyle: 'hidden',
-    transparent: true,
-    hasShadow: false,
-    frame: false,
-    movable: false,
-    fullscreen: false,
-    parent: mainWindow,
-    webPreferences: {
-      partition: 'persist:adpartition',
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-
-  cmp.on('closed', () => {
-    cmpCompleted = true;
-    if (!isAdFree) {
-      attachAdView();
-    }
-  });
-
-  const target = resurface ? `${CMP_URL}?resurface=1` : CMP_URL;
-  cmp.loadURL(target).catch(() => {
-    // En desarrollo offline sin dominio remoto aún publicado, cierra el modal limpiamente.
-    if (!cmp.isDestroyed()) cmp.close();
-  });
-  return cmp;
+  return { folders: dirs, clips: clips.slice(0, 24) };
 }
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1480,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 680,
-    backgroundColor: '#0a0a0b',
-    title: 'VANTS GAMES — PC',
+    width: 1380,
+    height: 860,
+    minWidth: 960,
+    minHeight: 640,
+    frame: false,
+    titleBarStyle: 'hidden',
+    backgroundColor: '#0A0A0B',
+    title: 'VANTS',
     icon: path.join(__dirname, 'build', 'icon.png'),
-    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
 
-  const devUrl = process.env.BANTER_DEV_URL;
+  // Cargar 100% la app local empaquetada (independiente de la web vants.cc)
+  const devUrl = process.env.VANTS_DEV_URL || process.env.BANTER_DEV_URL;
   if (devUrl) {
     mainWindow.loadURL(devUrl);
   } else {
-    // Carga la web oficial https://vants.cc organizada para PC; si no hay red cae al bundle local.
-    mainWindow.loadURL(BANTER_ORIGIN).catch(() => {
-      const packagedDist = path.resolve(__dirname, 'web-dist/index.html');
-      const workspaceDist = path.resolve(__dirname, '../web/dist/index.html');
-      mainWindow.loadFile(packagedDist).catch(() => {
-        mainWindow.loadFile(workspaceDist).catch(() => {});
-      });
+    const packagedDist = path.resolve(__dirname, 'web-dist/index.html');
+    const workspaceDist = path.resolve(__dirname, '../web/dist/index.html');
+    mainWindow.loadFile(packagedDist).catch(() => {
+      mainWindow.loadFile(workspaceDist).catch(() => {});
     });
   }
 
-  mainWindow.on('resize', positionAdView);
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    adView = null;
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('vants:win-state', { maximized: true });
+  });
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('vants:win-state', { maximized: false });
   });
 
-  // Lanza CMP primero; solo al cerrarse se cargan los anuncios NitroPay (regla GDPR).
-  if (!isAdFree) {
-    createCmpModal(false);
-  }
+  // Abrir enlaces externos seguros en el navegador del sistema
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\//i.test(url)) {
+      shell.openExternal(url).catch(() => {});
+    }
+    return { action: 'deny' };
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
-ipcMain.handle('banter:resurface-cmp', () => {
-  createCmpModal(true);
+// ── IPC: Controles de ventana ────────────────────────────────────────────────
+ipcMain.handle('vants:win-minimize', () => {
+  mainWindow?.minimize();
+  return { ok: true };
 });
+ipcMain.handle('vants:win-toggle-maximize', () => {
+  if (!mainWindow) return { maximized: false };
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+  return { maximized: mainWindow.isMaximized() };
+});
+ipcMain.handle('vants:win-close', () => {
+  mainWindow?.close();
+  return { ok: true };
+});
+ipcMain.handle('vants:win-is-maximized', () => ({
+  maximized: Boolean(mainWindow?.isMaximized()),
+}));
 
-ipcMain.handle('banter:set-ad-free', (_evt, nextAdFree) => {
-  isAdFree = Boolean(nextAdFree);
-  if (isAdFree) {
-    detachAdView();
-  } else if (cmpCompleted) {
-    attachAdView();
-  } else {
-    createCmpModal(false);
+// ── IPC: Lanzador rápido de juegos y enlaces externos ────────────────────────
+ipcMain.handle('vants:launch-game', async (_evt, gameId) => {
+  const uri = GAME_URIS[String(gameId || '').toLowerCase()];
+  if (!uri) return { ok: false, error: 'juego_no_soportado' };
+  try {
+    await shell.openExternal(uri);
+    return { ok: true, gameId };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || 'no_instalado') };
   }
 });
 
-ipcMain.handle('banter:app-version', () => app.getVersion());
+ipcMain.handle('vants:open-external', async (_evt, url) => {
+  const safe = String(url || '').trim();
+  if (!/^https:\/\//i.test(safe)) return { ok: false, error: 'url_invalida' };
+  try {
+    await shell.openExternal(safe);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String((err && err.message) || 'open_error') };
+  }
+});
 
+// ── IPC: Clips locales (Razer Cortex / Capturas) ─────────────────────────────
+ipcMain.handle('banter:scan-cortex-clips', () => scanCortexClipsLocal());
+
+ipcMain.handle('vants:open-clip', async (_evt, filePath) => {
+  if (!isPathInsideAllowedRoots(filePath) || !fs.existsSync(filePath)) {
+    return { ok: false, error: 'ruta_no_permitida' };
+  }
+  const err = await shell.openPath(filePath);
+  return err ? { ok: false, error: err } : { ok: true };
+});
+
+ipcMain.handle('vants:reveal-clip', (_evt, filePath) => {
+  if (!isPathInsideAllowedRoots(filePath) || !fs.existsSync(filePath)) {
+    return { ok: false, error: 'ruta_no_permitida' };
+  }
+  shell.showItemInFolder(filePath);
+  return { ok: true };
+});
+
+// ── IPC: Versión y auto-actualización ────────────────────────────────────────
+ipcMain.handle('banter:app-version', () => ({ version: app.getVersion(), packaged: app.isPackaged }));
 ipcMain.handle('banter:check-updates', async () => {
   if (!autoUpdater || !app.isPackaged) {
-    return { supported: false, currentVersion: app.getVersion(), state: 'dev' };
+    return { supported: false, currentVersion: app.getVersion() };
   }
   try {
     const res = await autoUpdater.checkForUpdates();
-    return {
-      supported: true,
-      currentVersion: app.getVersion(),
-      latestVersion: res && res.updateInfo ? res.updateInfo.version : app.getVersion(),
-    };
+    return { supported: true, currentVersion: app.getVersion(), latestVersion: res?.updateInfo?.version || null };
   } catch (err) {
-    return { supported: true, currentVersion: app.getVersion(), error: String((err && err.message) || 'error') };
+    return { supported: true, error: String((err && err.message) || 'update_check_failed') };
   }
 });
-
 ipcMain.handle('banter:install-update', () => {
   if (autoUpdater && app.isPackaged) {
     autoUpdater.quitAndInstall(false, true);
+    return { ok: true };
   }
+  return { ok: false };
 });
-
-ipcMain.handle('banter:scan-cortex-clips', () => scanCortexClipsLocal());
 
 app.whenReady().then(() => {
   createMainWindow();
   setupAutoUpdater();
+
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createMainWindow();
+    }
   });
 });
 

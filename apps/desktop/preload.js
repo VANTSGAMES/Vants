@@ -1,13 +1,29 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('banterDesktop', {
+const desktopApi = {
   platform: 'desktop-electron',
-  /** Reabre el modal CMP de NitroPay (obligatorio para cumplimiento GDPR en Electron). */
-  resurfaceCmp: () => ipcRenderer.invoke('banter:resurface-cmp'),
-  /** Activa o desactiva el carril lateral de anuncios NitroPay según suscripción Banter Nitro. */
-  setAdFree: (adFree) => ipcRenderer.invoke('banter:set-ad-free', Boolean(adFree)),
+  // Controles de ventana nativa sin bordes (frameless)
+  minimize: () => ipcRenderer.invoke('vants:win-minimize'),
+  toggleMaximize: () => ipcRenderer.invoke('vants:win-toggle-maximize'),
+  close: () => ipcRenderer.invoke('vants:win-close'),
+  isMaximized: () => ipcRenderer.invoke('vants:win-is-maximized'),
+  onWindowState: (listener) => {
+    const handler = (_evt, state) => listener(state);
+    ipcRenderer.on('vants:win-state', handler);
+    return () => ipcRenderer.removeListener('vants:win-state', handler);
+  },
+
+  // Lanzador rápido de juegos de PC y enlaces externos seguros
+  launchGame: (gameId) => ipcRenderer.invoke('vants:launch-game', String(gameId || '')),
+  openExternal: (url) => ipcRenderer.invoke('vants:open-external', String(url || '')),
+
+  // Detector y gestión de clips locales (Razer Cortex / Capturas de Windows)
+  scanCortexClips: () => ipcRenderer.invoke('banter:scan-cortex-clips'),
+  openClipFile: (filePath) => ipcRenderer.invoke('vants:open-clip', String(filePath || '')),
+  revealClipFolder: (filePath) => ipcRenderer.invoke('vants:reveal-clip', String(filePath || '')),
+
+  // Versión y auto-actualización vía GitHub Releases (electron-updater)
   getAppVersion: () => ipcRenderer.invoke('banter:app-version'),
-  /** Auto-actualización vía GitHub Releases (electron-updater). */
   checkForUpdates: () => ipcRenderer.invoke('banter:check-updates'),
   installUpdate: () => ipcRenderer.invoke('banter:install-update'),
   onUpdateStatus: (listener) => {
@@ -15,6 +31,7 @@ contextBridge.exposeInMainWorld('banterDesktop', {
     ipcRenderer.on('banter:update-status', handler);
     return () => ipcRenderer.removeListener('banter:update-status', handler);
   },
-  /** Escanea clips recientes en Razer Cortex (y carpetas compatibles) en Windows. */
-  scanCortexClips: () => ipcRenderer.invoke('banter:scan-cortex-clips'),
-});
+};
+
+contextBridge.exposeInMainWorld('vantsDesktop', desktopApi);
+contextBridge.exposeInMainWorld('banterDesktop', desktopApi);

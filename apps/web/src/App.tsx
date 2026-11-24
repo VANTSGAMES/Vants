@@ -1,379 +1,561 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  BANTER_PLANS,
-  DEFAULT_BANTER_MOTOR_URL,
-  DEFAULT_CUSTOMIZATION,
-  detectPlatform,
-  platformLabel,
-  resolveMonetization,
-  sanitizeCustomizationForPlan,
-  submitToBanterGoogleSheet,
-  validateRegistrationPayload,
-  validateRequestPayload,
-  type BanterPlanId,
-  type BanterPlatform,
-  type BanterProfileCustomization,
-  type BanterRequestPayload,
-} from "@banter/core";
-import { AdSlot } from "./components/AdSlot";
-import { NitroPersonalizer } from "./components/NitroPersonalizer";
-import { resurfacePrivacyConsent } from "./lib/nitropay";
-import {
-  checkPlatformUpdate,
-  scanDesktopCortexClips,
-  subscribeDesktopUpdates,
-  triggerInstallDesktopUpdate,
-  type DetectedCortexClip,
-  type UpdateStatusPayload,
-} from "./lib/appUpdater";
+  fetchClipsComunidad,
+  fetchDirectos,
+  fetchEquiposFaceit,
+  fetchJugadores,
+  getDesktopBridge,
+  openUrl,
+  type ClipComunidadItem,
+  type DirectoItem,
+  type EquipoFaceitItem,
+  type JugadorItem,
+  type LocalClipItem,
+} from "./lib/vantsApi";
 
-const SHEETS_WEBHOOK_URL = String(
-  import.meta.env.VITE_SHEETS_WEBHOOK_URL ||
-    import.meta.env.VITE_BANTER_API_URL ||
-    DEFAULT_BANTER_MOTOR_URL,
-).trim();
-const GOOGLE_SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1i0t2hRSAO4WT7nKlK3rzgsx4oulmrYmpTqIe6CA5ozU/edit";
+type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking";
+
+interface GameEntry {
+  id: string;
+  name: string;
+  subtitle: string;
+  accent: string;
+  platformLabel: string;
+  webFallback: string;
+}
+
+const GAMES: GameEntry[] = [
+  {
+    id: "valorant",
+    name: "VALORANT",
+    subtitle: "Riot Client · Competitivo y torneos VANTS",
+    accent: "#ff4655",
+    platformLabel: "Riot Client",
+    webFallback: "https://vants.cc/juegos",
+  },
+  {
+    id: "cs2",
+    name: "Counter-Strike 2",
+    subtitle: "Steam · FACEIT CS2 y Ranking VANTS",
+    accent: "#f5c044",
+    platformLabel: "Steam",
+    webFallback: "https://www.faceit.com/es/cs2",
+  },
+  {
+    id: "fortnite",
+    name: "Fortnite",
+    subtitle: "Epic Games · Battle Royale y Arena",
+    accent: "#9d4dff",
+    platformLabel: "Epic Games",
+    webFallback: "https://vants.cc/juegos",
+  },
+  {
+    id: "lol",
+    name: "League of Legends",
+    subtitle: "Riot Client · Grieta del Invocador",
+    accent: "#4cc9f0",
+    platformLabel: "Riot Client",
+    webFallback: "https://vants.cc/juegos",
+  },
+  {
+    id: "rocketleague",
+    name: "Rocket League",
+    subtitle: "Epic Games · Torneos 2v2 / 3v3",
+    accent: "#3ddc84",
+    platformLabel: "Epic Games",
+    webFallback: "https://vants.cc/juegos",
+  },
+  {
+    id: "steam",
+    name: "Steam",
+    subtitle: "Abrir biblioteca completa de Steam",
+    accent: "#66c0f4",
+    platformLabel: "Biblioteca PC",
+    webFallback: "https://store.steampowered.com",
+  },
+];
 
 export function App() {
-  const detected = detectPlatform();
-  const [platform, setPlatform] = useState<BanterPlatform>(detected);
-  const [planId, setPlanId] = useState<BanterPlanId>("free");
-  const [customization, setCustomization] = useState<BanterProfileCustomization>(DEFAULT_CUSTOMIZATION);
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatusPayload>({ state: "idle" });
-  const [cortexClips, setCortexClips] = useState<DetectedCortexClip[]>([]);
-  const [cortexFolders, setCortexFolders] = useState<string[]>([]);
+  const desktop = useMemo(() => getDesktopBridge(), []);
+  const isPc = Boolean(desktop);
+
+  const [tab, setTab] = useState<TabId>("inicio");
+  const [maximized, setMaximized] = useState(false);
+  const [appVersion, setAppVersion] = useState("1.0.0");
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [directos, setDirectos] = useState<DirectoItem[]>([]);
+  const [jugadores, setJugadores] = useState<JugadorItem[]>([]);
+  const [equipos, setEquipos] = useState<EquipoFaceitItem[]>([]);
+  const [clipsComunidad, setClipsComunidad] = useState<ClipComunidadItem[]>([]);
+  const [offline, setOffline] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Exclusivo PC: clips locales en disco (Razer Cortex / Capturas)
+  const [localClips, setLocalClips] = useState<LocalClipItem[]>([]);
+  const [localFolders, setLocalFolders] = useState<string[]>([]);
+  const [scanningClips, setScanningClips] = useState(false);
+
+  const [searchRank, setSearchRank] = useState("");
+  const [clipFilter, setClipFilter] = useState("todos");
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast((curr) => (curr === msg ? null : curr)), 3200);
+  };
+
+  const refreshData = async () => {
+    setLoading(true);
+    const [d, j, e, c] = await Promise.all([
+      fetchDirectos(),
+      fetchJugadores(),
+      fetchEquiposFaceit(),
+      fetchClipsComunidad(),
+    ]);
+    setDirectos(d.directos);
+    setJugadores(j.jugadores);
+    setEquipos(e.equipos);
+    setClipsComunidad(c.clips);
+    setOffline(d.offline && j.offline);
+    setLoading(false);
+  };
+
+  const scanLocalClips = async () => {
+    if (!desktop) return;
+    setScanningClips(true);
+    try {
+      const res = await desktop.scanCortexClips();
+      setLocalClips(res.clips || []);
+      setLocalFolders(res.folders || []);
+    } catch {
+      showToast("No se pudieron leer las carpetas de clips locales.");
+    } finally {
+      setScanningClips(false);
+    }
+  };
 
   useEffect(() => {
-    const unsub = subscribeDesktopUpdates((next) => setUpdateStatus(next));
-    checkPlatformUpdate(platform).then(setUpdateStatus).catch(() => {});
-    if (platform === "desktop-electron") {
-      scanDesktopCortexClips()
-        .then((r) => {
-          setCortexFolders(r.folders);
-          setCortexClips(r.clips);
-        })
-        .catch(() => {});
+    void refreshData();
+    if (desktop) {
+      void scanLocalClips();
+      desktop.getAppVersion().then((r) => setAppVersion(r.version)).catch(() => {});
+      desktop.isMaximized().then((r) => setMaximized(Boolean(r.maximized))).catch(() => {});
+      const offWin = desktop.onWindowState?.((s) => setMaximized(Boolean(s.maximized)));
+      const offUpd = desktop.onUpdateStatus?.((u) => {
+        if (u.state === "downloading") setUpdateMsg(`Descargando v${u.version || ""} (${u.percent ?? 0}%)`);
+        else if (u.state === "downloaded") setUpdateMsg(`Actualización v${u.version || ""} lista`);
+        else if (u.state === "available") setUpdateMsg(`Nueva versión v${u.version || ""} disponible`);
+      });
+      return () => {
+        offWin?.();
+        offUpd?.();
+      };
     }
-    return unsub;
-  }, [platform]);
+    return undefined;
+  }, [desktop]);
 
-  // Registro de usuarios -> Google Sheets / Forms
-  const [regHandle, setRegHandle] = useState("FEISS");
-  const [regEmail, setRegEmail] = useState("");
-  const [regCountry, setRegCountry] = useState("Venezuela");
-  const [regNotes, setRegNotes] = useState("");
-  const [regStatus, setRegStatus] = useState<string | null>(null);
-  const [regBusy, setRegBusy] = useState(false);
+  const vivos = useMemo(() => directos.filter((d) => d.en_vivo), [directos]);
 
-  // Control de solicitudes -> Google Sheets / Forms
-  const [reqName, setReqName] = useState("");
-  const [reqEmail, setReqEmail] = useState("");
-  const [reqType, setReqType] = useState<BanterRequestPayload["requestType"]>("Solicitud NitroPay/Ads");
-  const [reqPriority, setReqPriority] = useState<BanterRequestPayload["priority"]>("Alta");
-  const [reqSummary, setReqSummary] = useState("");
-  const [reqStatus, setReqStatus] = useState<string | null>(null);
-  const [reqBusy, setReqBusy] = useState(false);
+  const filteredJugadores = useMemo(() => {
+    const q = searchRank.trim().toLowerCase();
+    if (!q) return jugadores.slice(0, 40);
+    return jugadores.filter((j) => j.nick.toLowerCase().includes(q)).slice(0, 40);
+  }, [jugadores, searchRank]);
 
-  const decision = resolveMonetization(platform, planId);
-  const activePlan = BANTER_PLANS[planId];
+  const filteredClips = useMemo(() => {
+    if (clipFilter === "todos") return clipsComunidad;
+    return clipsComunidad.filter((c) => c.juego === clipFilter);
+  }, [clipsComunidad, clipFilter]);
 
-  const cambiarPlan = (next: BanterPlanId) => {
-    setPlanId(next);
-    setCustomization((prev) => sanitizeCustomizationForPlan(next, prev));
-  };
-
-  const enviarRegistro = async (e: FormEvent) => {
-    e.preventDefault();
-    const payload = {
-      kind: "usuario_registro" as const,
-      handle: regHandle.trim(),
-      email: regEmail.trim(),
-      platform,
-      planId,
-      country: regCountry.trim(),
-      notes: regNotes.trim(),
-    };
-    const err = validateRegistrationPayload(payload);
-    if (err) return setRegStatus(err);
-    setRegBusy(true);
-    setRegStatus(null);
-    try {
-      const res = await submitToBanterGoogleSheet(SHEETS_WEBHOOK_URL, payload);
-      setRegStatus(
-        res.mode === "remote"
-          ? `Registro guardado en Google Sheets (${res.id}).`
-          : `Validado (${res.id}). Configura VITE_SHEETS_WEBHOOK_URL con tu Apps Script para escritura directa.`,
-      );
-      setRegNotes("");
-    } catch (ex: any) {
-      setRegStatus(ex?.message || "No se pudo guardar el registro.");
-    } finally {
-      setRegBusy(false);
+  const handleLaunchGame = async (game: GameEntry) => {
+    if (!desktop) {
+      openUrl(game.webFallback);
+      return;
+    }
+    const res = await desktop.launchGame(game.id);
+    if (res.ok) {
+      showToast(`Lanzando ${game.name}…`);
+    } else {
+      showToast(`No se encontró ${game.platformLabel} instalado en este PC.`);
     }
   };
 
-  const enviarSolicitud = async (e: FormEvent) => {
-    e.preventDefault();
-    const payload: BanterRequestPayload = {
-      kind: "solicitud_banter",
-      requester: reqName.trim(),
-      email: reqEmail.trim(),
-      requestType: reqType,
-      platform,
-      priority: reqPriority,
-      summary: reqSummary.trim(),
-    };
-    const err = validateRequestPayload(payload);
-    if (err) return setReqStatus(err);
-    setReqBusy(true);
-    setReqStatus(null);
-    try {
-      const res = await submitToBanterGoogleSheet(SHEETS_WEBHOOK_URL, payload);
-      setReqStatus(
-        res.mode === "remote"
-          ? `Solicitud registrada en Solicitudes_Banter (${res.id}).`
-          : `Validada (${res.id}). Despliega google-workspace/setup-banter-forms.gs para conectarla en vivo.`,
-      );
-      setReqSummary("");
-    } catch (ex: any) {
-      setReqStatus(ex?.message || "No se pudo enviar la solicitud.");
-    } finally {
-      setReqBusy(false);
-    }
-  };
+  const navItems: Array<{ id: TabId; label: string; icon: string; badge?: string; live?: boolean }> = [
+    { id: "inicio", label: "Inicio", icon: "⚡" },
+    { id: "juegos", label: isPc ? "Lanzador PC" : "Juegos", icon: "🎮" },
+    { id: "clips", label: isPc ? "Clips PC" : "Clips", icon: "🎬", badge: isPc && localClips.length ? String(localClips.length) : undefined },
+    { id: "directos", label: "Directos", icon: "🔴", badge: vivos.length ? String(vivos.length) : undefined, live: vivos.length > 0 },
+    { id: "ranking", label: "Ranking", icon: "🏆" },
+  ];
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand__mark">B</span>
-          <div>
-            <strong>BANTER</strong>
-            <span className="muted small">Escritorio · Android · Web</span>
-          </div>
+    <div className="vants-shell">
+      {/* Barra superior nativa (frameless en PC, compacta en Android) */}
+      <header className="vants-titlebar">
+        <div className="vants-titlebar-left">
+          <img src="./brand/vants-mark.png" alt="VANTS" className="vants-mark" />
+          <span className="vants-brand-title">{isPc ? "VANTS PC" : "VANTS Movil"}</span>
+          <span className={`vants-pill ${offline ? "offline" : "ok"}`}>
+            {offline ? "Sin conexión (caché)" : "En línea"}
+          </span>
+          {updateMsg && (
+            <button
+              type="button"
+              className="btn primary"
+              style={{ padding: "3px 9px", fontSize: "11px" }}
+              onClick={() => desktop?.installUpdate()}
+            >
+              {updateMsg}
+            </button>
+          )}
         </div>
 
-        <div className="switcher" role="group" aria-label="Simular plataforma">
-          {(["web", "desktop-electron", "android-capacitor"] as BanterPlatform[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={`chip ${platform === p ? "chip--active" : ""}`}
-              onClick={() => setPlatform(p)}
-            >
-              {platformLabel(p)}
-            </button>
-          ))}
+        <div className="vants-titlebar-right">
+          <button type="button" className="win-btn" title="Actualizar datos" onClick={() => void refreshData()}>
+            ↻
+          </button>
+          {isPc && (
+            <>
+              <button type="button" className="win-btn" title="Minimizar" onClick={() => void desktop?.minimize()}>
+                ─
+              </button>
+              <button
+                type="button"
+                className="win-btn"
+                title={maximized ? "Restaurar" : "Maximizar"}
+                onClick={() => void desktop?.toggleMaximize()}
+              >
+                {maximized ? "❐" : "□"}
+              </button>
+              <button type="button" className="win-btn close" title="Cerrar" onClick={() => void desktop?.close()}>
+                ✕
+              </button>
+            </>
+          )}
         </div>
       </header>
 
-      <main className="main">
-        <section className="hero card">
-          <span className="eyebrow">Ecosistema Multiplataforma · Monetización Híbrida</span>
-          <h1>Banter: Nitro + NitroPay + Google Workspace</h1>
-          <p className="muted">
-            Núcleo compartido para <strong>Escritorio (Electron)</strong>, <strong>Android (Capacitor)</strong> y <strong>Web</strong>.
-            Suscripciones tipo Nitro para personalización y experiencia sin anuncios, combinadas con <strong>NitroPay (Overwolf)</strong> en Web/PC y <strong>Google AdMob</strong> en Android.
-          </p>
-          <div className="meta-row">
-            <span className="pill">Plataforma: {platformLabel(platform)}</span>
-            <span className="pill">Red activa: {decision.adProvider}</span>
-            <span className="pill">Facturación: {decision.billingChannel}</span>
-            <span className="pill">
-              Auto-update:{" "}
-              {updateStatus.state === "downloaded"
-                ? `v${updateStatus.version || "nueva"} lista`
-                : updateStatus.state === "downloading"
-                  ? `Descargando ${updateStatus.percent ?? 0}%`
-                  : updateStatus.state === "available"
-                    ? `v${updateStatus.version || "nueva"} disponible`
-                    : `v${updateStatus.currentVersion || updateStatus.version || "1.0.0"} al día`}
-            </span>
-            {updateStatus.state === "downloaded" && platform === "desktop-electron" && (
-              <button type="button" className="btn btn--primary" onClick={() => triggerInstallDesktopUpdate()}>
-                Reiniciar y actualizar
-              </button>
-            )}
-            <a className="pill pill--link" href={GOOGLE_SHEET_URL} target="_blank" rel="noopener noreferrer">
-              Abrir Google Sheet Maestra ↗
-            </a>
-          </div>
-        </section>
-
-        <AdSlot
-          id="banter-top-display"
-          platform={platform}
-          planId={planId}
-          format="display"
-          onUpgradeClick={() => cambiarPlan("nitro")}
-        />
-
-        <section className="card">
-          <div className="card__head">
-            <div>
-              <span className="eyebrow">Suscripciones tipo Nitro</span>
-              <h2>Modelo híbrido de ingresos</h2>
-            </div>
-          </div>
-          <div className="grid-3">
-            {(Object.keys(BANTER_PLANS) as BanterPlanId[]).map((id) => {
-              const p = BANTER_PLANS[id];
-              const active = planId === id;
-              return (
-                <article key={id} className={`plan-card ${active ? "plan-card--active" : ""}`}>
-                  <div className="plan-card__top">
-                    <strong>{p.name}</strong>
-                    <span className="price">
-                      {p.priceMonthlyUsd === 0 ? "Gratis" : `$${p.priceMonthlyUsd.toFixed(2)}/mes`}
-                    </span>
-                  </div>
-                  <p className="muted small">{p.tagline}</p>
-                  <ul className="perks">
-                    {p.perks.map((perk) => (
-                      <li key={perk}>{perk}</li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    className={`btn ${active ? "btn--ghost" : "btn--primary"}`}
-                    onClick={() => cambiarPlan(id)}
-                  >
-                    {active ? "Plan activo" : `Activar ${p.name}`}
-                  </button>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <NitroPersonalizer
-          planId={planId}
-          handle={regHandle}
-          customization={customization}
-          onChange={setCustomization}
-        />
-
-        <section className="card">
-          <div className="card__head">
-            <div>
-              <span className="eyebrow">Captura automática · VANTS Clipper PC → YouTube Shorts</span>
-              <h2>Clips automáticos con Créditos VANTS diarios</h2>
-            </div>
-            <span className="pill">
-              Tu plan ({activePlan.name}):{" "}
-              {activePlan.dailyShortsLimit > 0
-                ? `${activePlan.dailyShortsLimit} Shorts/día · ${activePlan.dailyVidiqLimit} Créditos VANTS/día`
-                : "Recorte local 9:16 gratis (subida manual)"}
-            </span>
-          </div>
-          <p className="muted small">
-            En Windows PC nuestra app detecta tus carpetas de captura automáticamente y convierte cada jugada a 9:16 en tu propio ordenador sin consumir servidores. Al entrar cada día, tu plan <strong>Nitro / Nitro+</strong> activa tus <strong>Créditos VANTS IA</strong> y tu cupo diario de auto-subida a YouTube Shorts.
-          </p>
-          <div className="meta-row">
-            <a
-              className="pill pill--link"
-              href="https://github.com/VANTSGAMES/VANTS-Clipper/releases/latest"
-              target="_blank"
-              rel="noopener noreferrer"
+      <div className="vants-body">
+        {/* Rail lateral exclusivo de escritorio */}
+        <aside className="vants-rail">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-btn ${tab === item.id ? "active" : ""}`}
+              onClick={() => setTab(item.id)}
             >
-              Descargar motor VANTS Clipper PC ↗
-            </a>
-            <a className="pill pill--link" href="https://vants.cc/clips" target="_blank" rel="noopener noreferrer">
-              Ver mi cuota diaria en vants.cc ↗
-            </a>
-            {platform === "desktop-electron" && (
-              <span className="pill">
-                Carpetas detectadas: {cortexFolders.length} · Clips recientes: {cortexClips.length}
-              </span>
-            )}
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+              {item.badge && <span className={`nav-badge ${item.live ? "live" : ""}`}>{item.badge}</span>}
+            </button>
+          ))}
+
+          <div className="rail-footer">
+            <button type="button" className="btn" onClick={() => openUrl("https://vants.cc")}>
+              Abrir vants.cc ↗
+            </button>
+            <div style={{ fontSize: "11px", color: "var(--muted)", textAlign: "center" }}>
+              VANTS App · v{appVersion}
+            </div>
           </div>
-        </section>
+        </aside>
 
-        <section className="grid-2">
-          <form className="card form" onSubmit={enviarRegistro}>
-            <span className="eyebrow">Google Forms + Google Sheets</span>
-            <h2>Registro de usuarios Banter</h2>
-            <p className="muted small">
-              Escribe en la pestaña <code>Usuarios_Registro</code> de la Google Sheet maestra.
-            </p>
-            <div className="field">
-              <label htmlFor="reg-handle">Nombre o Handle</label>
-              <input id="reg-handle" className="input" required value={regHandle} onChange={(e) => setRegHandle(e.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="reg-email">Correo electrónico</label>
-              <input id="reg-email" className="input" type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="jugador@vants.cc" />
-            </div>
-            <div className="field">
-              <label htmlFor="reg-country">País</label>
-              <input id="reg-country" className="input" value={regCountry} onChange={(e) => setRegCountry(e.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="reg-notes">Notas / Juegos</label>
-              <input id="reg-notes" className="input" value={regNotes} onChange={(e) => setRegNotes(e.target.value)} placeholder="VALORANT, CS2, comunidad..." />
-            </div>
-            <button type="submit" className="btn btn--primary" disabled={regBusy}>
-              {regBusy ? "Registrando…" : "Registrar usuario"}
-            </button>
-            {regStatus && <p className="small status-msg">{regStatus}</p>}
-          </form>
+        {/* Área de contenido 100% local */}
+        <main className="vants-main">
+          {tab === "inicio" && (
+            <>
+              <section className="hero-card">
+                <div className="hero-brand">
+                  <img src="./brand/vants-mark.png" alt="VANTS" className="hero-mark" />
+                  <div>
+                    <h1>{isPc ? "Centro Competitivo VANTS PC" : "VANTS Movil"}</h1>
+                    <p>
+                      {isPc
+                        ? "App nativa de escritorio · Lanzador rápido, detector de clips Razer Cortex y datos en vivo."
+                        : "App nativa Android · Directos Twitch/Kick, Ranking FACEIT y clips de la comunidad."}
+                    </p>
+                  </div>
+                </div>
+                <div className="btn-row">
+                  <button type="button" className="btn primary" onClick={() => setTab("juegos")}>
+                    {isPc ? "🎮 Lanzar juego" : "🎮 Juegos"}
+                  </button>
+                  <button type="button" className="btn" onClick={() => setTab("clips")}>
+                    {isPc ? "🎬 Ver clips PC" : "🎬 Clips"}
+                  </button>
+                </div>
+              </section>
 
-          <form className="card form" onSubmit={enviarSolicitud}>
-            <span className="eyebrow">Control de solicitudes</span>
-            <h2>Solicitudes, Beta y Alianzas</h2>
-            <p className="muted small">
-              Registra solicitudes en <code>Solicitudes_Banter</code> y actualiza KPIs automáticamente.
-            </p>
-            <div className="field">
-              <label htmlFor="req-name">Nombre o Marca</label>
-              <input id="req-name" className="input" required value={reqName} onChange={(e) => setReqName(e.target.value)} placeholder="Tu nombre o estudio" />
-            </div>
-            <div className="field">
-              <label htmlFor="req-email">Correo de contacto</label>
-              <input id="req-email" className="input" type="email" required value={reqEmail} onChange={(e) => setReqEmail(e.target.value)} placeholder="equipo@marca.com" />
-            </div>
-            <div className="grid-2">
-              <div className="field">
-                <label htmlFor="req-type">Tipo</label>
-                <select id="req-type" className="input" value={reqType} onChange={(e) => setReqType(e.target.value as BanterRequestPayload["requestType"])}>
-                  <option value="Acceso Beta">Acceso Beta</option>
-                  <option value="Verificación Creador">Verificación Creador</option>
-                  <option value="Soporte Técnico">Soporte Técnico</option>
-                  <option value="Alianza / Patrocinio">Alianza / Patrocinio</option>
-                  <option value="Solicitud NitroPay/Ads">Solicitud NitroPay/Ads</option>
-                  <option value="Reembolso / Facturación">Reembolso / Facturación</option>
-                </select>
+              <div className="stats-row">
+                <div className="stat-box">
+                  <div className="stat-label">En directo ahora</div>
+                  <div className="stat-value" style={{ color: vivos.length ? "var(--red)" : "var(--text)" }}>
+                    {loading ? "…" : vivos.length}
+                  </div>
+                </div>
+                <div className="stat-box">
+                  <div className="stat-label">Jugadores VANTS</div>
+                  <div className="stat-value">{loading ? "…" : jugadores.length}</div>
+                </div>
+                <div className="stat-box">
+                  <div className="stat-label">Equipos FACEIT</div>
+                  <div className="stat-value">{loading ? "…" : equipos.length}</div>
+                </div>
+                <div className="stat-box">
+                  <div className="stat-label">{isPc ? "Clips en este PC" : "Clips comunidad"}</div>
+                  <div className="stat-value">{isPc ? localClips.length : clipsComunidad.length}</div>
+                </div>
               </div>
-              <div className="field">
-                <label htmlFor="req-prio">Prioridad</label>
-                <select id="req-prio" className="input" value={reqPriority} onChange={(e) => setReqPriority(e.target.value as BanterRequestPayload["priority"])}>
-                  <option value="Alta">Alta</option>
-                  <option value="Media">Media</option>
-                  <option value="Baja">Baja</option>
-                </select>
-              </div>
-            </div>
-            <div className="field">
-              <label htmlFor="req-summary">Descripción</label>
-              <textarea id="req-summary" className="input" rows={3} required value={reqSummary} onChange={(e) => setReqSummary(e.target.value)} placeholder="Detalla tu solicitud..." />
-            </div>
-            <button type="submit" className="btn btn--primary" disabled={reqBusy}>
-              {reqBusy ? "Enviando…" : "Enviar solicitud"}
-            </button>
-            {reqStatus && <p className="small status-msg">{reqStatus}</p>}
-          </form>
-        </section>
-      </main>
 
-      <footer className="footer">
-        <span className="muted small">Banter Ecosystem · Cumplimiento NitroPay (Overwolf) + Google Play AdMob/Billing</span>
-        {decision.requiresCmpResurfaceButton && (
-          <button type="button" className="btn-link" onClick={() => resurfacePrivacyConsent()}>
-            Gestionar preferencias de privacidad / CMP (GDPR)
+              <div className="section-head">
+                <h2>{isPc ? "Acceso rápido · Juegos PC" : "Directos destacados"}</h2>
+                <button type="button" className="btn" onClick={() => setTab(isPc ? "juegos" : "directos")}>
+                  Ver todo →
+                </button>
+              </div>
+
+              {isPc ? (
+                <div className="grid-cards">
+                  {GAMES.slice(0, 3).map((g) => (
+                    <div key={g.id} className="card">
+                      <div className="game-accent" style={{ background: g.accent }} />
+                      <h3 className="card-title">{g.name}</h3>
+                      <p className="card-meta">{g.subtitle}</p>
+                      <div className="btn-row">
+                        <button type="button" className="btn primary" onClick={() => void handleLaunchGame(g)}>
+                          ▶ Jugar ahora
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid-cards">
+                  {(vivos.length ? vivos : directos.slice(0, 4)).map((d) => (
+                    <div key={`${d.plataforma}:${d.canal}`} className="card">
+                      {d.miniatura && <img src={d.miniatura} alt={d.nombre} className="stream-thumb" />}
+                      <h3 className="card-title">
+                        {d.en_vivo ? "🔴 " : ""}
+                        {d.nombre}
+                      </h3>
+                      <p className="card-meta">
+                        {d.plataforma.toUpperCase()} {d.juego ? `· ${d.juego}` : ""}
+                        {d.espectadores != null ? ` · ${d.espectadores} espectadores` : ""}
+                      </p>
+                      <div className="btn-row">
+                        <button type="button" className="btn primary" onClick={() => openUrl(d.url)}>
+                          Ver canal ↗
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {tab === "juegos" && (
+            <>
+              <div className="section-head">
+                <h2>{isPc ? "Lanzador Rápido de Juegos (PC)" : "Títulos del Circuito VANTS"}</h2>
+              </div>
+              <div className="grid-cards">
+                {GAMES.map((g) => (
+                  <div key={g.id} className="card">
+                    <div className="game-accent" style={{ background: g.accent }} />
+                    <h3 className="card-title">{g.name}</h3>
+                    <p className="card-meta">{g.subtitle}</p>
+                    <div className="btn-row">
+                      <button type="button" className="btn primary" onClick={() => void handleLaunchGame(g)}>
+                        {isPc ? `▶ Abrir ${g.name}` : "Ver circuito ↗"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "clips" && (
+            <>
+              {isPc && (
+                <>
+                  <div className="section-head">
+                    <h2>Clips detectados en tu PC (Razer Cortex / Capturas)</h2>
+                    <button type="button" className="btn" onClick={() => void scanLocalClips()}>
+                      {scanningClips ? "Escaneando…" : "↻ Re-escanear carpetas"}
+                    </button>
+                  </div>
+                  {localClips.length === 0 ? (
+                    <div className="card" style={{ marginBottom: 22 }}>
+                      <h3 className="card-title">Sin clips locales detectados todavía</h3>
+                      <p className="card-meta">
+                        Carpetas revisadas:{" "}
+                        {localFolders.length
+                          ? localFolders.join(" · ")
+                          : "Videos/VALORANT, Videos/CS2, Videos/Captures y Razer Cortex/GameClips"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid-cards">
+                      {localClips.map((clip) => (
+                        <div key={clip.path} className="card">
+                          <h3 className="card-title">{clip.name}</h3>
+                          <p className="card-meta">
+                            {clip.game} · {clip.sizeMb} MB · {new Date(clip.mtimeMs).toLocaleDateString("es-ES")}
+                          </p>
+                          <div className="btn-row">
+                            <button
+                              type="button"
+                              className="btn primary"
+                              onClick={() => void desktop?.openClipFile(clip.path)}
+                            >
+                              ▶ Reproducir
+                            </button>
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={() => void desktop?.revealClipFolder(clip.path)}
+                            >
+                              📁 Carpeta
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="section-head">
+                <h2>Clips de la Comunidad VANTS</h2>
+                <div className="btn-row">
+                  {["todos", "valorant", "cs2", "fortnite"].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      className={`btn ${clipFilter === g ? "primary" : ""}`}
+                      onClick={() => setClipFilter(g)}
+                    >
+                      {g.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid-cards">
+                {filteredClips.slice(0, 18).map((c) => (
+                  <div key={c.id} className="card">
+                    {c.miniatura && <img src={c.miniatura} alt={c.titulo} className="stream-thumb" />}
+                    <h3 className="card-title">{c.titulo}</h3>
+                    <p className="card-meta">
+                      {c.autor || "Jugador VANTS"} · {c.juego.toUpperCase()} · {c.plataforma}
+                    </p>
+                    <div className="btn-row">
+                      <button type="button" className="btn primary" onClick={() => openUrl(c.url)}>
+                        Ver clip ↗
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "directos" && (
+            <>
+              <div className="section-head">
+                <h2>Directos Twitch & Kick ({vivos.length} en vivo)</h2>
+                <button type="button" className="btn" onClick={() => void refreshData()}>
+                  ↻ Actualizar
+                </button>
+              </div>
+              <div className="grid-cards">
+                {directos.map((d) => (
+                  <div key={`${d.plataforma}:${d.canal}`} className="card">
+                    {d.miniatura && <img src={d.miniatura} alt={d.nombre} className="stream-thumb" />}
+                    <h3 className="card-title">
+                      {d.en_vivo ? "🔴 " : "⚫ "}
+                      {d.nombre}
+                    </h3>
+                    <p className="card-meta">
+                      {d.plataforma.toUpperCase()} {d.juego ? `· ${d.juego}` : ""}
+                      {d.en_vivo && d.espectadores != null ? ` · ${d.espectadores} viendo` : " · Offline"}
+                    </p>
+                    {d.titulo && <p className="card-meta">{d.titulo}</p>}
+                    <div className="btn-row">
+                      <button type="button" className="btn primary" onClick={() => openUrl(d.url)}>
+                        Abrir directo ↗
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "ranking" && (
+            <>
+              <div className="section-head">
+                <h2>Ranking VANTS ({jugadores.length})</h2>
+                <input
+                  type="search"
+                  className="search-input"
+                  placeholder="Buscar jugador…"
+                  value={searchRank}
+                  onChange={(e) => setSearchRank(e.target.value)}
+                />
+              </div>
+              <div className="rank-list">
+                {filteredJugadores.map((j, idx) => (
+                  <div key={j.pid} className="rank-row">
+                    <div className="rank-pos">#{idx + 1}</div>
+                    {j.avatar ? (
+                      <img src={j.avatar} alt={j.nick} className="rank-avatar" />
+                    ) : (
+                      <div className="rank-avatar">{j.nick.slice(0, 2).toUpperCase()}</div>
+                    )}
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>
+                        {j.nick} {j.sello ? <span className="vants-pill">{j.sello}</span> : null}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                        {j.fundador ? "Fundador VANTS · " : ""}
+                        {j.xp} XP
+                      </div>
+                    </div>
+                    <div className="rank-metrics">
+                      {j.nivel != null && <span className="vants-pill ok">LVL {j.nivel}</span>}
+                      {j.elo != null && <span>{j.elo} ELO</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </main>
+      </div>
+
+      {/* Navegación inferior exclusiva de Móvil */}
+      <nav className="vants-bottom-nav">
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`bottom-btn ${tab === item.id ? "active" : ""}`}
+            onClick={() => setTab(item.id)}
+          >
+            <span style={{ fontSize: 16 }}>{item.icon}</span>
+            <span>{item.label}</span>
           </button>
-        )}
-      </footer>
+        ))}
+      </nav>
+
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }
+
+export default App;
