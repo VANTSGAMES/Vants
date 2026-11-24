@@ -47,6 +47,7 @@ const GAME_URIS = {
   valorant: 'riotclient://launch-product=valorant&launch-patchline=live',
   fortnite: 'com.epicgames.launcher://apps/Fortnite?action=launch&silent=true',
   lol: 'riotclient://launch-product=league_of_legends&launch-patchline=live',
+  warzone: 'steam://rungameid/1938090',
   rocketleague: 'com.epicgames.launcher://apps/Sugar?action=launch&silent=true',
   apex: 'steam://rungameid/1172470',
   steam: 'steam://open/main',
@@ -174,7 +175,7 @@ function createMainWindow() {
     minHeight: 640,
     frame: false,
     titleBarStyle: 'hidden',
-    backgroundColor: '#0A0A0B',
+    backgroundColor: '#08080A',
     title: 'VANTS',
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: {
@@ -273,7 +274,7 @@ ipcMain.handle('vants:open-inapp-modal', (_evt, url) => {
     parent: mainWindow || undefined,
     modal: false,
     autoHideMenuBar: true,
-    backgroundColor: '#0A0A0B',
+    backgroundColor: '#08080A',
     title: 'VANTS GAMES · Membresías',
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: {
