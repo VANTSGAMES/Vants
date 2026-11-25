@@ -11,6 +11,9 @@ import {
   IconDiscord,
   IconExternal,
   IconFilm,
+  IconGear,
+  IconHeadset,
+  IconRocket,
   IconFolder,
   IconGamepad,
   IconHome,
@@ -423,6 +426,7 @@ export function App() {
 
   // Filtros interactivos
   const [gameCat, setGameCat] = useState<GameCategory>("todos");
+  const [refreshingGames, setRefreshingGames] = useState(false);
   const [searchRank, setSearchRank] = useState("");
   const [rankView, setRankView] = useState<"jugadores" | "equipos">("jugadores");
   const [clipFilter, setClipFilter] = useState("todos");
@@ -657,6 +661,15 @@ export function App() {
     }
     return catalogBadges;
   }, [catalogBadges, badgeFilter, misInsignias]);
+
+  const handleRefreshGames = () => {
+    if (refreshingGames) return;
+    setRefreshingGames(true);
+    window.setTimeout(() => {
+      setRefreshingGames(false);
+      showToast(`Juegos actualizados · ${PC_GAMES.length} disponibles`);
+    }, 900);
+  };
 
   const handleLaunchGame = async (game: GameEntry) => {
     if (!desktop) {
@@ -1291,8 +1304,111 @@ export function App() {
               </div>
             )}
 
+            {/* ==================== LANZADOR PC (diseño modular) ==================== */}
+            {tab === "juegos" && isPc && (
+              <div className="launcher-pc">
+                <section className="launcher-banner">
+                  <img src="./img/ui/hero-vants.jpg" alt="" className="launcher-banner-bg" />
+                  <div className="launcher-banner-scrim" />
+                  <div className="launcher-banner-copy">
+                    <h1 className="launcher-title">
+                      LANZADOR <span>PC</span>
+                    </h1>
+                    <div className="launcher-subtitle">
+                      TUS <span>JUEGOS</span>, UN SOLO <span>LUGAR</span>
+                    </div>
+                    <p>Accede y juega rápidamente a tus títulos favoritos.</p>
+                  </div>
+                </section>
+
+                <div className="launcher-games">
+                  {PC_GAMES.slice(0, 6).map((g) => (
+                    <article key={g.id} className="launcher-game" onClick={() => void handleLaunchGame(g)}>
+                      <img src={`./img/juegos/poster-${g.id}.jpg`} alt={g.name} className="launcher-game-img" loading="lazy" />
+                      <div className="launcher-game-scrim" />
+                      <div className="launcher-game-foot">
+                        <div className="launcher-game-name">{g.shortTitle}</div>
+                        <button
+                          type="button"
+                          className="launcher-play-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleLaunchGame(g);
+                          }}
+                        >
+                          <IconPlay size={11} />
+                          <span>Jugar Ahora</span>
+                        </button>
+                        <div className="launcher-online">
+                          <i /> En línea
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+
+                <div className="launcher-widgets">
+                  <section className="launcher-widget">
+                    <h2 className="launcher-widget-title">Acceso Rápido</h2>
+                    <div className="quick-access-row">
+                      <button type="button" className="quick-btn" onClick={() => setTab("perfil")}>
+                        <IconGear size={26} style={{ color: "#9aa0ad" }} />
+                        <span>Configuración del Launcher</span>
+                      </button>
+                      <button type="button" className="quick-btn" onClick={() => openInApp("https://vants.cc/torneos")}>
+                        <IconRocket size={26} style={{ color: "#ff4d8d" }} />
+                        <span>Ver Torneos</span>
+                      </button>
+                      <button type="button" className="quick-btn" onClick={() => openInApp("https://vants.cc/soporte")}>
+                        <IconHeadset size={26} style={{ color: "#b07cff" }} />
+                        <span>Soporte</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="launcher-widget launcher-status">
+                    <h2 className="launcher-widget-title">Estado del Launcher</h2>
+                    <div className="launcher-status-body">
+                      <div className="launcher-status-check">
+                        <IconCheck size={26} />
+                      </div>
+                      <div>
+                        <div className="launcher-status-title">Todo listo para jugar</div>
+                        <div className="launcher-status-sub">Tus juegos están disponibles</div>
+                      </div>
+                    </div>
+                    <button type="button" className="launcher-refresh-btn" onClick={handleRefreshGames}>
+                      <IconRefresh size={14} />
+                      <span>{refreshingGames ? "Actualizando…" : "Actualizar Juegos"}</span>
+                    </button>
+                  </section>
+
+                  <section className="launcher-widget">
+                    <div className="panel-header-row" style={{ marginBottom: 10 }}>
+                      <h2 className="launcher-widget-title" style={{ margin: 0 }}>
+                        Noticias y Novedades
+                      </h2>
+                      <button type="button" className="pill-ghost-btn" onClick={() => openInApp("https://vants.cc/torneos")}>
+                        Ver todas →
+                      </button>
+                    </div>
+                    <div className="news-mini" onClick={() => openInApp("https://vants.cc/torneos")}>
+                      <img src="./img/ui/news-stadium.jpg" alt="VANTS Open 2026" className="news-mini-thumb" />
+                      <div className="news-mini-copy">
+                        <div className="news-mini-title">VANTS OPEN 2026</div>
+                        <p>¡Prepárate para el torneo más competitivo de LATAM!</p>
+                        <span className="news-mini-date">
+                          <IconCalendar size={11} /> 24 Nov • Torneos
+                        </span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            )}
+
             {/* ==================== JUEGOS / LANZADOR ==================== */}
-            {tab === "juegos" && (
+            {tab === "juegos" && !isPc && (
               <>
                 <div className="section-head">
                   <div className="section-head-titles">
