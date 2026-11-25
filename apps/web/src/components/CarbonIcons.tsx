@@ -29,6 +29,40 @@ export function IconHome(props: IconProps) {
   );
 }
 
+export function IconGamepad(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <rect x="2.5" y="6.5" width="19" height="11" rx="5.5" />
+      <line x1="8" y1="10" x2="8" y2="14" />
+      <line x1="6" y1="12" x2="10" y2="12" />
+      <circle cx="15.5" cy="10.8" r="1" fill="currentColor" stroke="none" />
+      <circle cx="17.8" cy="13" r="1" fill="currentColor" stroke="none" />
+    </BaseSvg>
+  );
+}
+
+export function IconClapper(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="8" y1="4" x2="6" y2="9" />
+      <line x1="14" y1="4" x2="12" y2="9" />
+      <line x1="19" y1="4" x2="17" y2="9" />
+      <polygon points="10,12 15,14.5 10,17" fill="currentColor" stroke="none" />
+    </BaseSvg>
+  );
+}
+
+export function IconLiveDot({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="7.5" fill="#ff1635" />
+      <circle cx="12" cy="12" r="10.5" fill="none" stroke="rgba(255, 22, 53, 0.35)" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 export function IconCrosshair(props: IconProps) {
   return (
     <BaseSvg {...props}>
@@ -84,19 +118,89 @@ export function IconUser(props: IconProps) {
   );
 }
 
+export function IconUserPlus(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <circle cx="9.5" cy="8" r="3.5" />
+      <path d="M3 19.5a6.5 6.5 0 0 1 13 0" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="16" y1="11" x2="22" y2="11" />
+    </BaseSvg>
+  );
+}
+
+export function IconStar(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <polygon
+        points="12,2.5 14.9,8.4 21.4,9.3 16.7,13.9 17.8,20.4 12,17.3 6.2,20.4 7.3,13.9 2.6,9.3 9.1,8.4"
+        fill="currentColor"
+        fillOpacity="0.22"
+      />
+    </BaseSvg>
+  );
+}
+
 export function IconCrown(props: IconProps) {
   return (
     <BaseSvg {...props}>
-      <path d="M3 18h18l-1.6-11-4.9 4.2L12 5 9.5 11.2 4.6 7 3 18z" />
+      <path
+        d="M3 18h18l-1.6-11-4.9 4.2L12 5 9.5 11.2 4.6 7 3 18z"
+        fill="currentColor"
+        fillOpacity="0.22"
+      />
       <line x1="3" y1="21" x2="21" y2="21" />
     </BaseSvg>
+  );
+}
+
+export function IconBolt(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <polygon
+        points="13,2 4.5,13.5 11.5,13.5 10.5,22 19.5,10.5 12.5,10.5"
+        fill="currentColor"
+        fillOpacity="0.25"
+      />
+    </BaseSvg>
+  );
+}
+
+export function IconPulse(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <polyline points="2 12 6 12 8.8 5 12.5 19 15.6 9.5 18 12 22 12" />
+    </BaseSvg>
+  );
+}
+
+export function IconCalendar(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <line x1="16" y1="3" x2="16" y2="7" />
+      <line x1="8" y1="3" x2="8" y2="7" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </BaseSvg>
+  );
+}
+
+export function IconDiscord({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.54 5.34A16.3 16.3 0 0 0 15.5 4.1a11.3 11.3 0 0 0-.5 1.03 15.1 15.1 0 0 0-6 0A11.3 11.3 0 0 0 8.5 4.1a16.3 16.3 0 0 0-4.04 1.24C1.9 9.15 1.2 12.86 1.54 16.52a16.5 16.5 0 0 0 4.96 2.5c.4-.54.76-1.12 1.06-1.73-.58-.22-1.14-.5-1.66-.82.14-.1.28-.21.41-.32 3.2 1.49 6.68 1.49 9.84 0 .14.11.27.22.41.32-.52.32-1.08.6-1.66.82.3.61.66 1.19 1.06 1.73a16.5 16.5 0 0 0 4.96-2.5c.41-4.24-.7-7.92-2.98-11.18ZM8.68 14.27c-.96 0-1.75-.88-1.75-1.96s.77-1.96 1.75-1.96c.99 0 1.77.89 1.75 1.96 0 1.08-.77 1.96-1.75 1.96Zm6.64 0c-.96 0-1.75-.88-1.75-1.96s.77-1.96 1.75-1.96c.99 0 1.77.89 1.75 1.96 0 1.08-.76 1.96-1.75 1.96Z" />
+    </svg>
   );
 }
 
 export function IconShield(props: IconProps) {
   return (
     <BaseSvg {...props}>
-      <path d="M12 3l8 3.5v5.5c0 5-3.4 8.3-8 9.8-4.6-1.5-8-4.8-8-9.8V6.5L12 3z" />
+      <path
+        d="M12 3l8 3.5v5.5c0 5-3.4 8.3-8 9.8-4.6-1.5-8-4.8-8-9.8V6.5L12 3z"
+        fill="currentColor"
+        fillOpacity="0.18"
+      />
       <path d="M9 12.2l2 2 4.2-4.2" />
     </BaseSvg>
   );
@@ -220,6 +324,56 @@ export function IconWinClose(props: IconProps) {
       <line x1="6" y1="6" x2="18" y2="18" />
       <line x1="18" y1="6" x2="6" y2="18" />
     </BaseSvg>
+  );
+}
+
+/** Mini gráfico de área tipo esports HUD para las tarjetas KPI del Inicio */
+export function SparklineArea({
+  id,
+  points,
+  stroke,
+  secondaryPoints,
+  secondaryStroke,
+}: {
+  id: string;
+  points: number[];
+  stroke: string;
+  secondaryPoints?: number[];
+  secondaryStroke?: string;
+}) {
+  const w = 96;
+  const h = 38;
+  const toPath = (pts: number[]) => {
+    const max = Math.max(...pts, 1);
+    const min = Math.min(...pts, 0);
+    const span = Math.max(max - min, 1);
+    return pts
+      .map((v, i) => {
+        const x = (i / Math.max(pts.length - 1, 1)) * w;
+        const y = h - 4 - ((v - min) / span) * (h - 10);
+        return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  };
+
+  const line = toPath(points);
+  const area = `${line} L${w},${h} L0,${h} Z`;
+  const secLine = secondaryPoints ? toPath(secondaryPoints) : null;
+
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" aria-hidden="true" className="kpi-sparkline">
+      <defs>
+        <linearGradient id={`spk_${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.36" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#spk_${id})`} />
+      {secLine && secondaryStroke && (
+        <path d={secLine} stroke={secondaryStroke} strokeWidth="1.5" strokeOpacity="0.7" />
+      )}
+      <path d={line} stroke={stroke} strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

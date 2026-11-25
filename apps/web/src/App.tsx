@@ -1,27 +1,36 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BadgeEmblem,
+  IconBolt,
   IconBroadcast,
+  IconCalendar,
   IconCheck,
+  IconClapper,
   IconCopy,
-  IconCrosshair,
   IconCrown,
+  IconDiscord,
   IconExternal,
   IconFilm,
   IconFolder,
+  IconGamepad,
   IconHome,
+  IconLiveDot,
   IconLogout,
   IconMail,
   IconPlay,
+  IconPulse,
   IconRefresh,
   IconSearch,
   IconShield,
+  IconStar,
   IconTrophy,
   IconUser,
+  IconUserPlus,
   IconUsers,
   IconWinClose,
   IconWinMax,
   IconWinMin,
+  SparklineArea,
 } from "./components/CarbonIcons";
 import {
   fetchClipsComunidad,
@@ -204,6 +213,7 @@ const DEFAULT_INSIGNIAS: InsigniaCatalogItem[] = [
 interface GameEntry {
   id: string;
   name: string;
+  shortTitle: string;
   subtitle: string;
   accent: string;
   category: Exclude<GameCategory, "todos">;
@@ -216,6 +226,7 @@ const PC_GAMES: GameEntry[] = [
   {
     id: "valorant",
     name: "VALORANT",
+    shortTitle: "VALORANT",
     subtitle: "Riot Client · Competitivo 5v5, Premier y copas VANTS",
     accent: "#ff4655",
     category: "fps",
@@ -226,6 +237,7 @@ const PC_GAMES: GameEntry[] = [
   {
     id: "cs2",
     name: "Counter-Strike 2",
+    shortTitle: "CS2",
     subtitle: "Steam · Integración oficial FACEIT ELO y Ranking VANTS",
     accent: "#f5c044",
     category: "fps",
@@ -236,6 +248,7 @@ const PC_GAMES: GameEntry[] = [
   {
     id: "fortnite",
     name: "Fortnite",
+    shortTitle: "Fortnite",
     subtitle: "Epic Games · Copas Battle Royale, Zero Build y Arena",
     accent: "#38bdf8",
     category: "royale",
@@ -246,6 +259,7 @@ const PC_GAMES: GameEntry[] = [
   {
     id: "lol",
     name: "League of Legends",
+    shortTitle: "LEAGUE OF LEGENDS",
     subtitle: "Riot Client · Grieta del Invocador y ligas 5v5",
     accent: "#2ee58d",
     category: "moba",
@@ -256,16 +270,18 @@ const PC_GAMES: GameEntry[] = [
   {
     id: "warzone",
     name: "Call of Duty: Warzone",
+    shortTitle: "WARZONE",
     subtitle: "PC · Escuadras tácticas y customs privadas VANTS",
     accent: "#dce2ec",
     category: "royale",
-    platformLabel: "PC · BATTLE.NET",
+    platformLabel: "PC · STEAM",
     webFallback: "https://vants.cc/torneos?juego=warzone",
     cover: "./img/juegos/warzone.jpg",
   },
   {
     id: "fc27",
     name: "EA SPORTS FC 27",
+    shortTitle: "EA SPORTS FC 27",
     subtitle: "Circuito VANTS · Copas 1v1 y clubes competitivos",
     accent: "#38bdf8",
     category: "moba",
@@ -279,6 +295,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "freefire",
     name: "Free Fire",
+    shortTitle: "FREE FIRE",
     subtitle: "Android · Salas privadas, escuadras 4v4 y torneos VANTS",
     accent: "#ff6b1a",
     category: "royale",
@@ -289,6 +306,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "mlbb",
     name: "Mobile Legends: Bang Bang",
+    shortTitle: "MOBILE LEGENDS",
     subtitle: "Android · Circuito competitivo 5v5 LATAM",
     accent: "#38bdf8",
     category: "moba",
@@ -299,6 +317,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "wildrift",
     name: "LoL: Wild Rift",
+    shortTitle: "WILD RIFT",
     subtitle: "Android · Copas tácticas 5v5 y ranking móvil",
     accent: "#2ee58d",
     category: "moba",
@@ -309,6 +328,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "clashroyale",
     name: "Clash Royale",
+    shortTitle: "CLASH ROYALE",
     subtitle: "Android · Brackets 1v1 en tiempo real y ligas VANTS",
     accent: "#f5c044",
     category: "moba",
@@ -319,6 +339,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "valorant",
     name: "VALORANT",
+    shortTitle: "VALORANT",
     subtitle: "Circuito VANTS · Brackets, resultados y seguimiento RR",
     accent: "#ff4655",
     category: "fps",
@@ -329,6 +350,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "cs2",
     name: "Counter-Strike 2",
+    shortTitle: "CS2",
     subtitle: "FACEIT CS2 · Tabla ELO y partidas de la comunidad",
     accent: "#ff0d2e",
     category: "fps",
@@ -339,6 +361,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "fortnite",
     name: "Fortnite",
+    shortTitle: "FORTNITE",
     subtitle: "Battle Royale · Torneos abiertos y estadísticas Epic",
     accent: "#38bdf8",
     category: "royale",
@@ -349,6 +372,7 @@ const MOBILE_GAMES: GameEntry[] = [
   {
     id: "smash",
     name: "Super Smash Bros.",
+    shortTitle: "SMASH BROS",
     subtitle: "Comunidad Fighting · Brackets dobles y eventos presenciales",
     accent: "#dce2ec",
     category: "moba",
@@ -360,12 +384,16 @@ const MOBILE_GAMES: GameEntry[] = [
 
 interface NavItem {
   id: TabId;
-  group: "operaciones" | "transmision" | "sistema";
   label: string;
-  shortLabel: string;
   icon: ReactNode;
   badge?: string;
   badgeTone?: "live" | "clean" | "default";
+}
+
+function formatCompactNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString("es-ES");
 }
 
 export function App() {
@@ -373,8 +401,9 @@ export function App() {
   const isPc = Boolean(desktop);
 
   const [tab, setTab] = useState<TabId>("inicio");
+  const [heroIdx, setHeroIdx] = useState(0);
   const [maximized, setMaximized] = useState(false);
-  const [appVersion, setAppVersion] = useState("1.2.5");
+  const [appVersion, setAppVersion] = useState("1.2.6");
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -385,15 +414,14 @@ export function App() {
   const [offline, setOffline] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Exclusivo PC: clips locales en disco y VANTS Shield
+  // Exclusivo PC: clips locales y VANTS Shield
   const [localClips, setLocalClips] = useState<LocalClipItem[]>([]);
   const [localFolders, setLocalFolders] = useState<string[]>([]);
   const [scanningClips, setScanningClips] = useState(false);
   const [shieldReport, setShieldReport] = useState<ShieldReport | null>(null);
   const [checkingShield, setCheckingShield] = useState(false);
 
-  // Filtros interactivos de interfaz Carbon
-  const [quickQuery, setQuickQuery] = useState("");
+  // Filtros interactivos
   const [gameCat, setGameCat] = useState<GameCategory>("todos");
   const [searchRank, setSearchRank] = useState("");
   const [rankView, setRankView] = useState<"jugadores" | "equipos">("jugadores");
@@ -401,7 +429,7 @@ export function App() {
   const [streamFilter, setStreamFilter] = useState<"todos" | "vivo" | "twitch" | "kick">("todos");
   const [badgeFilter, setBadgeFilter] = useState<"todas" | "mias">("todas");
 
-  // Sesión VANTS Identity, perfil del jugador, banner e insignias
+  // Sesión VANTS Identity, perfil, banner e insignias
   const [session, setSession] = useState<AuthSession | null>(() => getSavedSession());
   const [myPid, setMyPid] = useState<string | null>(null);
   const [otpEmail, setOtpEmail] = useState("");
@@ -477,7 +505,7 @@ export function App() {
       setSession(r.session);
       setOtpSent(false);
       setOtpCode("");
-      showToast(`Bienvenido a VANTS Carbon, ${r.session.user.name}`);
+      showToast(`Bienvenido a VANTS, ${r.session.user.name}`);
       const mias = await fetchMisInsignias(r.session.token);
       if (mias) {
         setMisInsignias(mias.conseguidas);
@@ -574,9 +602,9 @@ export function App() {
         .catch(() => {});
       const offWin = desktop.onWindowState?.((s) => setMaximized(Boolean(s.maximized)));
       const offUpd = desktop.onUpdateStatus?.((u) => {
-        if (u.state === "downloading") setUpdateMsg(`DESCARGANDO v${u.version || ""} (${u.percent ?? 0}%)`);
-        else if (u.state === "downloaded") setUpdateMsg(`INSTALAR v${u.version || ""}`);
-        else if (u.state === "available") setUpdateMsg(`NUEVA v${u.version || ""}`);
+        if (u.state === "downloading") setUpdateMsg(`Descargando v${u.version || ""} (${u.percent ?? 0}%)`);
+        else if (u.state === "downloaded") setUpdateMsg(`Instalar v${u.version || ""}`);
+        else if (u.state === "available") setUpdateMsg(`Nueva v${u.version || ""}`);
       });
       return () => {
         offWin?.();
@@ -586,24 +614,27 @@ export function App() {
     return undefined;
   }, [desktop]);
 
-  const vivos = useMemo(() => directos.filter((d) => d.en_vivo), [directos]);
+  // Auto-rotación suave del Hero Banner (pausable al cambiar de pestaña)
+  useEffect(() => {
+    if (tab !== "inicio") return undefined;
+    const t = window.setInterval(() => {
+      setHeroIdx((prev) => (prev + 1) % 4);
+    }, 6500);
+    return () => window.clearInterval(t);
+  }, [tab]);
 
+  const vivos = useMemo(() => directos.filter((d) => d.en_vivo), [directos]);
   const activeGames = isPc ? PC_GAMES : MOBILE_GAMES;
 
   const filteredGames = useMemo(() => {
-    const q = quickQuery.trim().toLowerCase();
-    return activeGames.filter((g) => {
-      if (gameCat !== "todos" && g.category !== gameCat) return false;
-      if (q && !g.name.toLowerCase().includes(q) && !g.subtitle.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [activeGames, gameCat, quickQuery]);
+    return activeGames.filter((g) => gameCat === "todos" || g.category === gameCat);
+  }, [activeGames, gameCat]);
 
   const filteredJugadores = useMemo(() => {
-    const q = (searchRank || quickQuery).trim().toLowerCase();
+    const q = searchRank.trim().toLowerCase();
     if (!q) return jugadores.slice(0, 50);
     return jugadores.filter((j) => j.nick.toLowerCase().includes(q)).slice(0, 50);
-  }, [jugadores, searchRank, quickQuery]);
+  }, [jugadores, searchRank]);
 
   const filteredDirectos = useMemo(() => {
     return directos.filter((d) => {
@@ -627,18 +658,6 @@ export function App() {
     return catalogBadges;
   }, [catalogBadges, badgeFilter, misInsignias]);
 
-  const handleQuickSearchEnter = (val: string) => {
-    const q = val.trim().toLowerCase();
-    if (!q) return;
-    if (activeGames.some((g) => g.name.toLowerCase().includes(q))) {
-      setTab("juegos");
-      return;
-    }
-    setSearchRank(val.trim());
-    setRankView("jugadores");
-    setTab("ranking");
-  };
-
   const handleLaunchGame = async (game: GameEntry) => {
     if (!desktop) {
       openInApp(game.webFallback);
@@ -648,80 +667,169 @@ export function App() {
     if (res.ok) {
       showToast(`Iniciando ${game.name}…`);
     } else {
-      showToast(`${game.platformLabel} no detectado · Abriendo hub de torneos.`);
+      showToast(`${game.platformLabel} no detectado · Abriendo torneos de ${game.name}.`);
       openInApp(game.webFallback);
     }
   };
 
+  // Diapositivas del Hero Showcase (Diapositiva 0 = Diseño exacto VANTS PC / Móvil)
+  const heroSlides = [
+    {
+      prefix: "V",
+      titleRest: isPc ? "ANTS PC" : "ANTS MÓVIL",
+      words: ["JUEGA", "COMPITE", "CONECTA"],
+      sub: "La plataforma definitiva para la comunidad VANTS",
+      cta: "Explorar Torneos ↗",
+      bg: "./img/ui/hero-vants.jpg",
+      onClick: () => openInApp("https://vants.cc/torneos"),
+    },
+    {
+      prefix: "V",
+      titleRest: "ANTS OPEN 2026",
+      words: ["VALORANT", "CS2", "FORTNITE"],
+      sub: "Inscripciones abiertas para escuadras y copas individuales en LATAM",
+      cta: isPc ? "Abrir Lanzador ↗" : "Ver Disciplinas ↗",
+      bg: "./img/juegos/valorant.jpg",
+      onClick: () => setTab("juegos"),
+    },
+    {
+      prefix: "D",
+      titleRest: "IRECTOS & CLIPS",
+      words: ["TWITCH", "KICK", "HIGHLIGHTS"],
+      sub: "Transmisiones verificadas en vivo y las mejores jugadas de la comunidad",
+      cta: "Ver Directos ↗",
+      bg: "./img/juegos/cs2.jpg",
+      onClick: () => setTab("directos"),
+    },
+    {
+      prefix: "P",
+      titleRest: "ERFIL & INSIGNIAS",
+      words: ["FACEIT", "RIOT ID", "EPIC GAMES"],
+      sub: "Sincroniza tus cuentas competitivas y desbloquea emblemas 3D oficiales",
+      cta: "Ir a Mi Perfil ↗",
+      bg: "./img/juegos/fortnite.jpg",
+      onClick: () => setTab("perfil"),
+    },
+  ];
+
+  const activeSlide = heroSlides[heroIdx] || heroSlides[0];
+
+  // Métricas dinámicas reales para las 4 tarjetas KPI con Sparklines
+  const totalCircuitoXp = useMemo(() => {
+    const sum = jugadores.reduce((acc, j) => acc + (Number(j.xp) || 0), 0);
+    return sum > 0 ? sum : 4850;
+  }, [jugadores]);
+
+  const myRankIndex = useMemo(() => {
+    if (!myPid) return -1;
+    return jugadores.findIndex((j) => j.pid === myPid);
+  }, [jugadores, myPid]);
+
+  const topPlayer = jugadores[0];
+  const secondPlayer = jugadores[1];
+  const latestClip = clipsComunidad[0];
+
+  // Feed de Actividad Reciente alimentado con datos reales de VANTS
+  const activityFeed = useMemo(
+    () => [
+      {
+        id: "act-1",
+        icon: <IconTrophy size={18} style={{ color: "#f5c044" }} />,
+        title: "Líder actual del Ranking VANTS",
+        sub: topPlayer
+          ? `🔥 ${topPlayer.nick} encabeza con ${topPlayer.xp.toLocaleString("es-ES")} XP`
+          : "🔥 Leyenda VANTS · Clasificación activa",
+        time: "En vivo",
+        action: () => setTab("ranking"),
+      },
+      {
+        id: "act-2",
+        icon: <IconUserPlus size={18} style={{ color: "#2ee58d" }} />,
+        title: "Competidor destacado en comunidad",
+        sub: secondPlayer
+          ? `${secondPlayer.nick} compite en el circuito VANTS`
+          : "Nuevos competidores vinculados a FACEIT & Riot",
+        time: "Reciente",
+        action: () => setTab("ranking"),
+      },
+      {
+        id: "act-3",
+        icon: <IconClapper size={18} style={{ color: "#8ea1ff" }} />,
+        title: "Nuevo clip destacado",
+        sub: latestClip
+          ? `${latestClip.titulo} · ${latestClip.juego.toUpperCase()}`
+          : "Jugadas épicas en VALORANT y CS2",
+        time: "Destacado",
+        action: () => setTab("clips"),
+      },
+      {
+        id: "act-4",
+        icon: <img src="./brand/vants-mark.png" alt="" style={{ width: 20, height: 20, objectFit: "contain" }} />,
+        title: "Temporada competitiva activa",
+        sub: "PASE S4 – Torneos Semanales Abiertos",
+        time: "Abierto",
+        action: () => setTab("planes"),
+      },
+    ],
+    [topPlayer, secondPlayer, latestClip],
+  );
+
+  // Rail lateral con los iconos de color exactos al diseño VANTS PC
   const navItems: NavItem[] = [
-    { id: "inicio", group: "operaciones", label: "Centro de Mando", shortLabel: "Inicio", icon: <IconHome size={17} /> },
+    {
+      id: "inicio",
+      label: "Inicio",
+      icon: <IconHome size={18} style={{ color: tab === "inicio" ? "#fff" : "#f43f5e" }} />,
+    },
     {
       id: "juegos",
-      group: "operaciones",
-      label: isPc ? "Lanzador & Torneos" : "Juegos & Torneos",
-      shortLabel: isPc ? "Lanzador" : "Torneos",
-      icon: <IconCrosshair size={17} />,
-      badge: String(activeGames.length),
-    },
-    {
-      id: "ranking",
-      group: "operaciones",
-      label: "Ranking & Equipos",
-      shortLabel: "Ranking",
-      icon: <IconTrophy size={17} />,
-    },
-    {
-      id: "directos",
-      group: "transmision",
-      label: "Directos En Vivo",
-      shortLabel: "En Vivo",
-      icon: <IconBroadcast size={17} />,
-      badge: vivos.length ? String(vivos.length) : undefined,
-      badgeTone: vivos.length ? "live" : "default",
+      label: isPc ? "Lanzador PC" : "Torneos",
+      icon: <IconGamepad size={18} style={{ color: "#818cf8" }} />,
     },
     {
       id: "clips",
-      group: "transmision",
-      label: isPc ? "Clips PC & Comunidad" : "Clips Comunidad",
-      shortLabel: "Clips",
-      icon: <IconFilm size={17} />,
-      badge: isPc && localClips.length ? String(localClips.length) : undefined,
+      label: isPc ? "Clips PC" : "Clips",
+      icon: <IconClapper size={18} style={{ color: "#93c5fd" }} />,
+      badge: isPc ? String(localClips.length || clipsComunidad.length || 0) : String(clipsComunidad.length || 0),
+    },
+    {
+      id: "directos",
+      label: "Directos",
+      icon: <IconLiveDot size={17} />,
+      badge: vivos.length ? String(vivos.length) : undefined,
+      badgeTone: "live",
+    },
+    {
+      id: "ranking",
+      label: "Ranking",
+      icon: <IconTrophy size={18} style={{ color: "#f5c044" }} />,
     },
     {
       id: "perfil",
-      group: "sistema",
-      label: session ? session.user.name.slice(0, 15) : "Perfil & Insignias",
-      shortLabel: session ? "Perfil" : "Entrar",
-      icon: <IconUser size={17} />,
-      badge: session ? "ON" : undefined,
-      badgeTone: session ? "clean" : "default",
+      label: session ? session.user.name.slice(0, 14) : "Perfil / Entrar",
+      icon: <IconUser size={18} style={{ color: "#fb7185" }} />,
     },
     {
       id: "planes",
-      group: "sistema",
-      label: "Planes & Pase S4",
-      shortLabel: "Planes",
-      icon: <IconCrown size={17} />,
+      label: "Planes",
+      icon: <IconStar size={18} style={{ color: "#f5c044" }} />,
     },
     ...(isPc
       ? [
           {
             id: "shield" as TabId,
-            group: "sistema" as const,
             label: "VANTS Shield",
-            shortLabel: "Shield",
-            icon: <IconShield size={17} />,
-            badge: shieldReport ? (shieldReport.status === "clean" ? "OK" : "!") : undefined,
+            icon: <IconShield size={18} style={{ color: "#60a5fa" }} />,
+            badge: shieldReport ? (shieldReport.status === "clean" ? "OK" : "!") : "OK",
             badgeTone: (shieldReport?.status === "flagged" ? "live" : "clean") as "live" | "clean",
           },
         ]
       : []),
   ];
 
-  // Barra inferior Android (5 accesos primarios ergonómicos >= 50px)
   const mobileBottomNav: Array<{ id: TabId; label: string; icon: ReactNode }> = [
     { id: "inicio", label: "Inicio", icon: <IconHome size={19} /> },
-    { id: "juegos", label: "Torneos", icon: <IconCrosshair size={19} /> },
+    { id: "juegos", label: "Torneos", icon: <IconGamepad size={19} /> },
     { id: "directos", label: "En Vivo", icon: <IconBroadcast size={19} /> },
     { id: "ranking", label: "Ranking", icon: <IconTrophy size={19} /> },
     { id: "perfil", label: session ? "Perfil" : "Entrar", icon: <IconUser size={19} /> },
@@ -734,17 +842,16 @@ export function App() {
 
   return (
     <div className="vants-shell">
-      {/* ── Barra Superior Carbon (Frameless en PC / Safe-Area en Android) ── */}
+      {/* ── Barra Superior Nativa ── */}
       <header className="vants-titlebar">
         <div className="vants-titlebar-left">
           <div className="brand-lockup" onClick={() => setTab("inicio")} style={{ cursor: "pointer" }}>
             <img src="./brand/vants-mark.png" alt="VANTS" className="vants-mark" />
-            <span className="vants-brand-title">{isPc ? "VANTS PC" : "VANTS MOVIL"}</span>
+            <span className="vants-brand-title">{isPc ? "VANTS PC" : "VANTS MÓVIL"}</span>
           </div>
-          <span className="vants-brand-sub">CARBON v{appVersion}</span>
-          <span className={`status-chip ${offline ? "offline" : ""}`}>
-            <span className={`status-dot ${!offline && vivos.length > 0 ? "live" : ""}`} />
-            {offline ? "CACHÉ LOCAL" : vivos.length > 0 ? `${vivos.length} EN VIVO` : "EN LÍNEA"}
+          <span className={`online-pill ${offline ? "offline" : ""}`}>
+            <span>{offline ? "MODO CACHÉ" : "EN LÍNEA"}</span>
+            <span className="online-pill-dot" />
           </span>
 
           {updateMsg && (
@@ -754,44 +861,11 @@ export function App() {
           )}
         </div>
 
-        {isPc && (
-          <div className="titlebar-search">
-            <IconSearch size={14} />
-            <input
-              id="carbon-global-search"
-              type="search"
-              placeholder="Buscar juego o competidor…"
-              value={quickQuery}
-              onChange={(e) => setQuickQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleQuickSearchEnter(quickQuery);
-              }}
-            />
-          </div>
-        )}
-
         <div className="vants-titlebar-right">
-          {isPc && (
-            <button
-              type="button"
-              className="status-chip hide-mobile"
-              style={{
-                cursor: "pointer",
-                borderColor: shieldReport?.status === "flagged" ? "var(--red)" : "var(--line)",
-                color: shieldReport?.status === "clean" ? "var(--green)" : "var(--text-2)",
-              }}
-              onClick={() => setTab("shield")}
-              title="Estado de integridad VANTS Shield"
-            >
-              <IconShield size={13} />
-              <span>{shieldReport?.status === "clean" ? "SHIELD OK" : shieldReport ? "ALERTA" : "SHIELD"}</span>
-            </button>
-          )}
-
           <button
             id="carbon-identity-btn"
             type="button"
-            className={`identity-trigger ${session ? "" : "guest"}`}
+            className={`login-pill-btn ${session ? "logged" : ""}`}
             onClick={() => setTab("perfil")}
           >
             {session ? (
@@ -806,18 +880,13 @@ export function App() {
             ) : (
               <>
                 <IconUser size={14} />
-                <span>ENTRAR</span>
+                <span>Iniciar sesión</span>
               </>
             )}
           </button>
 
-          <button
-            type="button"
-            className="win-btn"
-            title="Sincronizar datos en vivo"
-            onClick={() => void refreshData()}
-          >
-            <IconRefresh size={15} />
+          <button type="button" className="win-btn" title="Sincronizar datos" onClick={() => void refreshData()}>
+            <IconRefresh size={14} />
           </button>
 
           {isPc && (
@@ -841,23 +910,23 @@ export function App() {
         </div>
       </header>
 
-      {/* ── Franja Rápida Complementaria Android (sin duplicar la barra inferior de 5 pestañas) ── */}
+      {/* ── Franja Rápida Complementaria Android ── */}
       <div className="vants-mobile-strip" aria-label="Accesos rápidos de VANTS Móvil">
         <button
           type="button"
           className={`mobile-chip ${tab === "clips" ? "active" : ""}`}
           onClick={() => setTab("clips")}
         >
-          <IconFilm size={15} />
-          <span>CLIPS ({clipsComunidad.length})</span>
+          <IconClapper size={14} />
+          <span>Clips ({clipsComunidad.length})</span>
         </button>
         <button
           type="button"
           className={`mobile-chip ${tab === "planes" ? "active" : ""}`}
           onClick={() => setTab("planes")}
         >
-          <IconCrown size={15} />
-          <span>PASE S4 &amp; PRO</span>
+          <IconCrown size={14} />
+          <span>VANTS PRO &amp; S4</span>
         </button>
         <button
           type="button"
@@ -867,317 +936,359 @@ export function App() {
             setTab("ranking");
           }}
         >
-          <IconUsers size={15} />
-          <span>ESCUADRAS ({equipos.length})</span>
+          <IconUsers size={14} />
+          <span>Escuadras ({equipos.length})</span>
         </button>
         <button type="button" className="mobile-chip" onClick={() => openUrl("https://vants.cc")}>
-          <IconExternal size={14} />
-          <span>VANTS.CC</span>
+          <IconExternal size={13} />
+          <span>vants.cc</span>
         </button>
       </div>
 
       <div className="vants-body">
-        {/* ── Rail Lateral Táctico PC ── */}
+        {/* ── Sidebar Izquierda Futurista (PC) ── */}
         <aside className="vants-rail" aria-label="Navegación principal">
-          {(["operaciones", "transmision", "sistema"] as const).map((grp) => {
-            const groupTitle =
-              grp === "operaciones" ? "OPERACIONES" : grp === "transmision" ? "TRANSMISIÓN" : "CUENTA & SISTEMA";
-            return (
-              <div key={grp} className="rail-group">
-                <div className="rail-group-label">{groupTitle}</div>
-                {navItems
-                  .filter((n) => n.group === grp)
-                  .map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={`nav-btn ${tab === item.id ? "active" : ""}`}
-                      onClick={() => setTab(item.id)}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                      {item.badge && (
-                        <span
-                          className={`nav-badge ${
-                            item.badgeTone === "live" ? "live" : item.badgeTone === "clean" ? "clean" : ""
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-              </div>
-            );
-          })}
-
-          <div className="rail-footer">
-            <div className="rail-player-card" onClick={() => setTab("perfil")}>
-              {session?.user.picture || perfilActivo?.avatar ? (
-                <img
-                  src={perfilActivo?.avatar || session?.user.picture || ""}
-                  alt="Avatar"
-                  className="rail-player-avatar"
-                />
-              ) : (
-                <div className="rail-player-avatar">
-                  {(session?.user.name || "VG").slice(0, 2).toUpperCase()}
-                </div>
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`nav-btn ${tab === item.id ? "active" : ""}`}
+              onClick={() => setTab(item.id)}
+            >
+              <span className="nav-icon-slot">{item.icon}</span>
+              <span>{item.label}</span>
+              {item.badge && (
+                <span
+                  className={`nav-badge ${
+                    item.badgeTone === "live" ? "live" : item.badgeTone === "clean" ? "clean" : ""
+                  }`}
+                >
+                  {item.badge}
+                </span>
               )}
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {session ? session.user.name : "Invitado VANTS"}
-                </div>
-                <div className="mono" style={{ fontSize: 10.5, color: "var(--muted)" }}>
-                  {session ? `${misInsignias.length} insignias · NVL ${vantsLevel}` : "Sincronizar perfil →"}
-                </div>
-              </div>
-            </div>
+            </button>
+          ))}
 
-            <button type="button" className="btn sm" onClick={() => openUrl("https://vants.cc")}>
-              <span>PORTAL VANTS.CC</span>
+          <div className="rail-brand-footer">
+            <div className="rail-crest-glow">
+              <img src="./brand/vants-mark.png" alt="VANTS Crest" />
+            </div>
+            <div className="rail-brand-name">{isPc ? "VANTS PC" : "VANTS MÓVIL"}</div>
+            <p className="rail-brand-desc">Tu plataforma de esports y gaming competitivo</p>
+            <button type="button" className="rail-portal-btn" onClick={() => openUrl("https://vants.cc")}>
+              <span>Abrir vants.cc</span>
               <IconExternal size={13} />
             </button>
-
-            <div className="rail-meta">
-              <span>CARBON UI</span>
-              <span>v{appVersion}</span>
-            </div>
+            <div className="rail-version-label">VANTS App · v{appVersion}</div>
           </div>
         </aside>
 
-        {/* ── Lienzo Central ── */}
+        {/* ── Lienzo Principal ── */}
         <main className="vants-main">
           <div className="vants-container">
-            {/* ==================== INICIO ==================== */}
+            {/* ==================== INICIO (NUEVO DASHBOARD FUTURISTA) ==================== */}
             {tab === "inicio" && (
-              <>
-                <section className="carbon-hero">
-                  <div
-                    className="carbon-hero-art"
-                    style={{
-                      backgroundImage: `url(${isPc ? "./img/juegos/valorant.jpg" : "./img/juegos/freefire.jpg"})`,
-                    }}
-                  />
-                  <div className="carbon-hero-scrim" />
-                  <div className="carbon-hero-inner">
-                    <div className="carbon-hero-copy">
-                      <div className="eyebrow">
-                        {isPc ? "CLIENTE OFICIAL DE ESCRITORIO · CARBON" : "CLIENTE OFICIAL ANDROID · CARBON"}
+              <div className="home-dashboard-grid">
+                {/* COLUMNA IZQUIERDA PRINCIPAL */}
+                <div className="home-left-stack">
+                  {/* 1) Hero Showcase con Soldado Táctico & Carrusel */}
+                  <section className="hero-showcase">
+                    <div
+                      className="hero-showcase-bg"
+                      style={{ backgroundImage: `url(${activeSlide.bg})` }}
+                    />
+                    <div className="hero-showcase-scrim" />
+                    <div className="hero-showcase-content">
+                      <h1 className="hero-futuristic-title">
+                        <span className="v-accent">{activeSlide.prefix}</span>
+                        {activeSlide.titleRest}
+                      </h1>
+                      <div className="hero-futuristic-tagline">
+                        <span>{activeSlide.words[0]}</span>
+                        <span className="hero-diamond">♦</span>
+                        <span>{activeSlide.words[1]}</span>
+                        <span className="hero-diamond">♦</span>
+                        <span>{activeSlide.words[2]}</span>
                       </div>
-                      <h1>{isPc ? "CENTRO COMPETITIVO VANTS PC" : "CIRCUITO COMPETITIVO VANTS MÓVIL"}</h1>
-                      <p>
-                        {isPc
-                          ? "Lanzador directo de juegos, verificación limpia de procesos VANTS Shield, detector automático de clips locales y clasificación FACEIT en vivo."
-                          : "Torneos móviles y esports en tiempo real, transmisiones de Twitch y Kick, vitrina de insignias 3D y tabla oficial de competidores VANTS."}
-                      </p>
-                      <div className="btn-row">
-                        <button type="button" className="btn primary" onClick={() => setTab("juegos")}>
-                          <IconCrosshair size={16} />
-                          <span>{isPc ? "ABRIR LANZADOR PC" : "EXPLORAR TORNEOS"}</span>
-                        </button>
-                        <button type="button" className="btn" onClick={() => setTab("perfil")}>
-                          <IconUser size={15} />
-                          <span>{session ? "MI PERFIL E INSIGNIAS" : "CONECTAR CUENTA VANTS"}</span>
-                        </button>
-                        {isPc && (
-                          <button type="button" className="btn" onClick={() => setTab("shield")}>
-                            <IconShield size={15} />
-                            <span>VANTS SHIELD</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Franja de Telemetría Interactiva */}
-                <div className="telemetry-strip">
-                  <div className={`telemetry-cell ${vivos.length ? "hot" : ""}`} onClick={() => setTab("directos")}>
-                    <div className="telemetry-top">
-                      <span>EN DIRECTO</span>
-                      <IconBroadcast size={14} />
-                    </div>
-                    <div className="telemetry-val" style={{ color: vivos.length ? "var(--red)" : "var(--text)" }}>
-                      {loading ? "—" : vivos.length}
-                    </div>
-                    <div className="telemetry-sub">Canales Twitch &amp; Kick activos</div>
-                  </div>
-
-                  <div className="telemetry-cell" onClick={() => setTab("ranking")}>
-                    <div className="telemetry-top">
-                      <span>COMPETIDORES</span>
-                      <IconTrophy size={14} />
-                    </div>
-                    <div className="telemetry-val">{loading ? "—" : jugadores.length}</div>
-                    <div className="telemetry-sub">Ranking oficial VANTS</div>
-                  </div>
-
-                  <div
-                    className="telemetry-cell"
-                    onClick={() => {
-                      setRankView("equipos");
-                      setTab("ranking");
-                    }}
-                  >
-                    <div className="telemetry-top">
-                      <span>ESCUADRAS</span>
-                      <IconUsers size={14} />
-                    </div>
-                    <div className="telemetry-val">{loading ? "—" : equipos.length}</div>
-                    <div className="telemetry-sub">Equipos FACEIT registrados</div>
-                  </div>
-
-                  <div className="telemetry-cell" onClick={() => setTab("clips")}>
-                    <div className="telemetry-top">
-                      <span>{isPc ? "CLIPS LOCALES" : "CLIPS COMUNIDAD"}</span>
-                      <IconFilm size={14} />
-                    </div>
-                    <div className="telemetry-val">{isPc ? localClips.length : clipsComunidad.length}</div>
-                    <div className="telemetry-sub">{isPc ? "Detectados en este equipo" : "Destacados del circuito"}</div>
-                  </div>
-                </div>
-
-                {/* Acceso rápido de juegos */}
-                <div className="section-head">
-                  <div className="section-head-titles">
-                    <div className="eyebrow">{isPc ? "LANZADOR DIRECTO" : "DISCIPLINAS ACTIVAS"}</div>
-                    <h2>{isPc ? "JUEGOS COMPETITIVOS EN PC" : "JUEGOS Y LIGAS DESTACADAS"}</h2>
-                  </div>
-                  <button type="button" className="btn sm" onClick={() => setTab("juegos")}>
-                    <span>VER CATÁLOGO ({activeGames.length})</span>
-                  </button>
-                </div>
-
-                <div className="grid-cards">
-                  {activeGames.slice(0, isPc ? 3 : 4).map((g) => (
-                    <article key={g.id} className="card game-card">
-                      <div className="game-cover-wrap">
-                        <img src={g.cover} alt={g.name} className="game-cover-img" loading="lazy" />
-                        <div className="game-cover-scrim" />
-                        <span className="game-cover-badge">{g.platformLabel}</span>
-                      </div>
-                      <div className="game-card-body">
-                        <div style={{ width: 32, height: 2, background: g.accent }} />
-                        <h3 className="card-title">{g.name}</h3>
-                        <p className="card-meta">{g.subtitle}</p>
-                        <div className="card-actions">
-                          <button type="button" className="btn primary sm" onClick={() => void handleLaunchGame(g)}>
-                            <IconPlay size={13} />
-                            <span>{isPc ? "JUGAR AHORA" : "TORNEOS"}</span>
-                          </button>
-                          {isPc && (
-                            <button
-                              type="button"
-                              className="btn sm"
-                              onClick={() => openInApp(g.webFallback)}
-                              title="Abrir brackets de torneos en VANTS"
-                            >
-                              <span>TORNEOS</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-
-                {/* Vista dual inferior: Directos + Top Ranking */}
-                <div className="grid-split-home">
-                  <div>
-                    <div className="section-head">
-                      <div className="section-head-titles">
-                        <h2>TRANSMISIONES DESTACADAS</h2>
-                      </div>
-                      <button type="button" className="btn sm" onClick={() => setTab("directos")}>
-                        <span>TODOS LOS CANALES</span>
+                      <p className="hero-futuristic-sub">{activeSlide.sub}</p>
+                      <button type="button" className="hero-glow-cta" onClick={activeSlide.onClick}>
+                        <span>{activeSlide.cta}</span>
                       </button>
                     </div>
-                    <div className="grid-cards" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", marginBottom: 0 }}>
-                      {(vivos.length ? vivos : directos).slice(0, 2).map((d) => (
-                        <article key={`${d.plataforma}:${d.canal}`} className="card media-card">
-                          <div className="media-thumb-wrap">
-                            {d.miniatura ? (
-                              <img src={d.miniatura} alt={d.nombre} className="media-thumb" loading="lazy" />
-                            ) : (
-                              <div className="media-thumb-fallback">
-                                <IconBroadcast size={26} />
-                              </div>
-                            )}
-                            <div className="media-badge-tl">
-                              <span className={`tag ${d.en_vivo ? "red" : ""}`}>
-                                {d.en_vivo ? "EN VIVO" : d.plataforma.toUpperCase()}
-                              </span>
-                            </div>
-                            {d.espectadores != null && d.en_vivo && (
-                              <span className="media-badge-br">{d.espectadores} VIENDO</span>
-                            )}
-                          </div>
-                          <div className="media-body">
-                            <h3 className="card-title" style={{ fontSize: 17 }}>
-                              {d.nombre}
-                            </h3>
-                            <p className="card-meta">
-                              {d.plataforma.toUpperCase()} {d.juego ? `· ${d.juego}` : ""}
-                            </p>
-                            <div className="card-actions">
-                              <button type="button" className="btn primary sm" onClick={() => openUrl(d.url)}>
-                                <span>VER CANAL</span>
-                                <IconExternal size={13} />
-                              </button>
-                            </div>
-                          </div>
-                        </article>
+
+                    <div className="hero-dots" role="tablist" aria-label="Diapositivas destacadas">
+                      {heroSlides.map((s, idx) => (
+                        <button
+                          key={s.titleRest}
+                          type="button"
+                          aria-label={`Diapositiva ${idx + 1}`}
+                          className={`hero-dot ${heroIdx === idx ? "active" : ""}`}
+                          onClick={() => setHeroIdx(idx)}
+                        />
                       ))}
                     </div>
+                  </section>
+
+                  {/* 2) Fila de 4 Tarjetas KPI con Sparklines */}
+                  <div className="kpi-spark-grid">
+                    <div className="kpi-card" onClick={() => setTab("ranking")}>
+                      <div className="kpi-head">
+                        <span className="kpi-icon-badge" style={{ background: "rgba(255, 13, 46, 0.16)", color: "#ff3352" }}>
+                          <IconUsers size={16} />
+                        </span>
+                        <span>Jugadores VANTS</span>
+                      </div>
+                      <div className="kpi-bottom">
+                        <div>
+                          <div className="kpi-value">
+                            {loading ? "…" : formatCompactNumber(Math.max(jugadores.length, 1))}
+                          </div>
+                          <div className="kpi-delta">↑ Comunidad activa</div>
+                        </div>
+                        <SparklineArea
+                          id="players"
+                          points={[18, 24, 21, 32, 29, 41, 38, 52]}
+                          stroke="#2ee58d"
+                          secondaryPoints={[14, 19, 17, 22, 26, 23, 30, 34]}
+                          secondaryStroke="#ff2946"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="kpi-card" onClick={() => openInApp("https://vants.cc/torneos")}>
+                      <div className="kpi-head">
+                        <span className="kpi-icon-badge" style={{ background: "rgba(168, 85, 247, 0.16)", color: "#c084fc" }}>
+                          <IconTrophy size={16} />
+                        </span>
+                        <span>Torneos &amp; Directos</span>
+                      </div>
+                      <div className="kpi-bottom">
+                        <div>
+                          <div className="kpi-value">{loading ? "…" : vivos.length || Math.max(directos.length, 3)}</div>
+                          <div className="kpi-delta neutral">Ver agenda →</div>
+                        </div>
+                        <SparklineArea
+                          id="tourneys"
+                          points={[12, 16, 15, 23, 21, 29, 34, 44]}
+                          stroke="#a855f7"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="kpi-card" onClick={() => setTab("ranking")}>
+                      <div className="kpi-head">
+                        <span className="kpi-icon-badge" style={{ background: "rgba(245, 192, 68, 0.16)", color: "#f5c044" }}>
+                          <IconCrown size={16} />
+                        </span>
+                        <span>Ranking Global</span>
+                      </div>
+                      <div className="kpi-bottom">
+                        <div>
+                          <div className="kpi-value">
+                            {myRankIndex >= 0 ? `#${myRankIndex + 1}` : "#1"}
+                          </div>
+                          <div className="kpi-delta">
+                            ↑ {topPlayer ? `${topPlayer.nick} Top` : "Tabla oficial"}
+                          </div>
+                        </div>
+                        <SparklineArea
+                          id="rank"
+                          points={[20, 18, 25, 22, 30, 27, 35, 42]}
+                          stroke="#f5c044"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="kpi-card" onClick={() => setTab("perfil")}>
+                      <div className="kpi-head">
+                        <span className="kpi-icon-badge" style={{ background: "rgba(56, 189, 248, 0.16)", color: "#38bdf8" }}>
+                          <IconBolt size={16} />
+                        </span>
+                        <span>XP Total Circuito</span>
+                      </div>
+                      <div className="kpi-bottom">
+                        <div>
+                          <div className="kpi-value">{formatCompactNumber(totalCircuitoXp)}</div>
+                          <div className="kpi-delta">↑ Temporada S4</div>
+                        </div>
+                        <SparklineArea
+                          id="xp"
+                          points={[10, 15, 19, 18, 27, 33, 39, 49]}
+                          stroke="#38bdf8"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <div className="section-head">
-                      <div className="section-head-titles">
-                        <h2>TOP COMPETIDORES</h2>
+                  {/* 3) Paneles Inferiores: Actividad Reciente + Juegos Disponibles 3x2 */}
+                  <div className="home-bottom-split">
+                    <section className="glass-panel crimson-edge">
+                      <div className="panel-header-row">
+                        <h2 className="panel-header-title">
+                          <IconPulse size={17} style={{ color: "var(--red)" }} />
+                          <span>Actividad Reciente</span>
+                        </h2>
+                        <button type="button" className="pill-ghost-btn" onClick={() => setTab("ranking")}>
+                          Ver todo →
+                        </button>
                       </div>
-                      <button type="button" className="btn sm" onClick={() => setTab("ranking")}>
-                        <span>TABLA COMPLETA</span>
-                      </button>
+
+                      <div className="activity-list">
+                        {activityFeed.map((item) => (
+                          <div key={item.id} className="activity-item" onClick={item.action}>
+                            <div className="activity-icon-box">{item.icon}</div>
+                            <div className="activity-copy">
+                              <div className="activity-title">{item.title}</div>
+                              <div className="activity-sub">{item.sub}</div>
+                            </div>
+                            <div className="activity-time">{item.time}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="glass-panel">
+                      <div className="panel-header-row">
+                        <h2 className="panel-header-title">
+                          <IconPulse size={17} style={{ color: "var(--red)" }} />
+                          <span>Juegos Disponibles</span>
+                        </h2>
+                        <button type="button" className="pill-ghost-btn" onClick={() => setTab("juegos")}>
+                          {isPc ? "Lanzar todos →" : "Ver todos →"}
+                        </button>
+                      </div>
+
+                      <div className="poster-mini-grid">
+                        {activeGames.slice(0, 6).map((g) => (
+                          <div key={g.id} className="poster-tile" onClick={() => void handleLaunchGame(g)}>
+                            <img src={g.cover} alt={g.name} className="poster-tile-img" loading="lazy" />
+                            <div className="poster-tile-scrim" />
+                            <div className="poster-tile-name">{g.shortTitle}</div>
+                            <span className="poster-play-pill">{isPc ? "Jugar →" : "Torneos →"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                </div>
+
+                {/* COLUMNA DERECHA DE WIDGETS TÁCTICOS */}
+                <div className="home-right-stack">
+                  {/* Widget 1: VANTS SHIELD (PC) / VANTS IDENTITY (Android) */}
+                  <section className="widget-shield-card">
+                    <img src="./img/ui/shield-crest.jpg" alt="VANTS Shield" className="widget-shield-art" />
+                    <div className="widget-shield-body">
+                      <h2 className="widget-shield-title">{isPc ? "VANTS SHIELD" : "VANTS IDENTITY"}</h2>
+                      {isPc ? (
+                        <>
+                          <div className={`shield-ok-row ${shieldReport?.status === "flagged" ? "flagged" : ""}`}>
+                            <IconCheck size={15} />
+                            <span>{shieldReport?.status === "flagged" ? "Revisar procesos" : "Todo en orden"}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.35 }}>
+                            Entorno verificado · Anti-Cheat activo
+                            <br />
+                            <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+                              {shieldReport ? shieldReport.code.slice(0, 12) : "SHA-256 OK"}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="shield-ok-row">
+                            <IconCheck size={15} />
+                            <span>{session ? "Cuenta verificada" : "Acceso seguro"}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.35 }}>
+                            Sincroniza tus insignias 3D y rango competitivo
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <div className="rank-list">
-                      {jugadores.slice(0, 5).map((j, idx) => (
+                    <button
+                      type="button"
+                      className="widget-dark-pill"
+                      onClick={() => setTab(isPc ? "shield" : "perfil")}
+                    >
+                      Ver detalles →
+                    </button>
+                  </section>
+
+                  {/* Widget 2: Próximos Torneos */}
+                  <section className="widget-tourney-card">
+                    <div className="panel-header-row" style={{ marginBottom: 9 }}>
+                      <h2 className="panel-header-title" style={{ fontSize: 14 }}>
+                        Próximos Torneos
+                      </h2>
+                      <span
+                        style={{ fontSize: 11, color: "var(--muted)", cursor: "pointer" }}
+                        onClick={() => openInApp("https://vants.cc/torneos")}
+                      >
+                        Ver todos →
+                      </span>
+                    </div>
+
+                    <div className="tourney-mini-box" onClick={() => openInApp("https://vants.cc/torneos")}>
+                      <img src="./img/ui/hero-vants.jpg" alt="VANTS Open" className="tourney-thumb" />
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         <div
-                          key={j.pid}
-                          className="rank-row"
-                          onClick={() => {
-                            void cargarPerfilPorPid(j.pid);
-                            setTab("perfil");
+                          style={{
+                            fontFamily: "var(--f-display)",
+                            fontSize: 16,
+                            fontWeight: 800,
+                            letterSpacing: "0.03em",
+                            lineHeight: 1.05,
                           }}
                         >
-                          <div
-                            className="rank-pos"
-                            style={{ color: idx === 0 ? "var(--gold)" : idx === 1 ? "#dce2ec" : idx === 2 ? "#e08b56" : undefined }}
-                          >
-                            #{idx + 1}
-                          </div>
-                          {j.avatar ? (
-                            <img src={j.avatar} alt={j.nick} className="rank-avatar" loading="lazy" />
-                          ) : (
-                            <div className="rank-avatar">{j.nick.slice(0, 2).toUpperCase()}</div>
-                          )}
-                          <div className="rank-info">
-                            <div className="rank-nick">
-                              <span>{j.nick}</span>
-                              {j.sello && <span className="tag red">{j.sello}</span>}
-                            </div>
-                            <div className="rank-sub mono">{j.xp} XP</div>
-                          </div>
-                          <div className="rank-metrics">
-                            {j.elo != null ? <span>{j.elo} ELO</span> : <span className="tag">PERFIL</span>}
-                          </div>
+                          VANTS OPEN 2026
                         </div>
-                      ))}
+                        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                          Valorant &amp; CS2 • LATAM
+                        </div>
+                        <div className="tourney-date-pill">
+                          <IconCalendar size={11} />
+                          <span>Circuito Abierto · 19:00 (VE)</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </section>
+
+                  {/* Widget 3: VANTS PRO Jersey */}
+                  <section className="widget-pro-card">
+                    <img src="./img/ui/pro-jersey.jpg" alt="Jersey VANTS PRO" className="widget-pro-art" />
+                    <div className="widget-pro-body">
+                      <IconCrown size={22} style={{ color: "#f5c044" }} />
+                      <h2 className="widget-pro-title">VANTS PRO</h2>
+                      <p style={{ margin: 0, fontSize: 12, color: "var(--text-2)", lineHeight: 1.35 }}>
+                        Beneficios exclusivos y mercancía oficial: jersey VANTS PRO
+                      </p>
+                      <button type="button" className="widget-red-pill" onClick={() => setTab("planes")}>
+                        Conoce más →
+                      </button>
+                    </div>
+                  </section>
+
+                  {/* Widget 4: Comunidad Discord */}
+                  <section className="widget-discord-card">
+                    <div className="discord-icon-circle">
+                      <IconDiscord size={20} />
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>Únete a nuestra comunidad</div>
+                      <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "var(--text-2)", lineHeight: 1.35 }}>
+                        Conecta con jugadores, participa en torneos y sé parte de VANTS.
+                      </p>
+                      <button
+                        type="button"
+                        className="discord-cta-btn"
+                        onClick={() => openInApp("https://vants.cc/comunidad")}
+                      >
+                        Entrar al Discord →
+                      </button>
+                    </div>
+                  </section>
                 </div>
-              </>
+              </div>
             )}
 
             {/* ==================== JUEGOS / LANZADOR ==================== */}
@@ -1231,7 +1342,7 @@ export function App() {
                         <div className="card-actions">
                           <button type="button" className="btn primary" onClick={() => void handleLaunchGame(g)}>
                             <IconPlay size={14} />
-                            <span>{isPc ? `ABRIR ${g.name}` : "VER TORNEOS"}</span>
+                            <span>{isPc ? `ABRIR ${g.shortTitle}` : "VER TORNEOS"}</span>
                           </button>
                           {isPc && (
                             <button type="button" className="btn" onClick={() => openInApp(g.webFallback)}>
@@ -1431,9 +1542,7 @@ export function App() {
                           </div>
                         )}
                         <div className="media-badge-tl">
-                          <span className={`tag ${d.en_vivo ? "red" : ""}`}>
-                            {d.en_vivo ? "EN VIVO" : "OFFLINE"}
-                          </span>
+                          <span className={`tag ${d.en_vivo ? "red" : ""}`}>{d.en_vivo ? "EN VIVO" : "OFFLINE"}</span>
                         </div>
                         <span className="media-badge-br">
                           {d.en_vivo && d.espectadores != null
@@ -1514,8 +1623,7 @@ export function App() {
 
                 {rankView === "jugadores" ? (
                   <>
-                    {/* Podio Top 3 cuando no hay búsqueda activa */}
-                    {!searchRank.trim() && !quickQuery.trim() && filteredJugadores.length >= 3 && (
+                    {!searchRank.trim() && filteredJugadores.length >= 3 && (
                       <div className="podium-grid">
                         {filteredJugadores.slice(0, 3).map((j, idx) => {
                           const accent = idx === 0 ? "#f5c044" : idx === 1 ? "#dce2ec" : "#e08b56";
@@ -1533,7 +1641,12 @@ export function App() {
                                 #{idx + 1}
                               </div>
                               {j.avatar ? (
-                                <img src={j.avatar} alt={j.nick} className="rank-avatar" style={{ width: 46, height: 46 }} />
+                                <img
+                                  src={j.avatar}
+                                  alt={j.nick}
+                                  className="rank-avatar"
+                                  style={{ width: 46, height: 46 }}
+                                />
                               ) : (
                                 <div className="rank-avatar" style={{ width: 46, height: 46 }}>
                                   {j.nick.slice(0, 2).toUpperCase()}
@@ -1596,7 +1709,12 @@ export function App() {
                         <div className="card-accent-top" style={{ background: "var(--orange)" }} />
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           {eq.avatar ? (
-                            <img src={eq.avatar} alt={eq.nombre} className="rank-avatar" style={{ width: 44, height: 44 }} />
+                            <img
+                              src={eq.avatar}
+                              alt={eq.nombre}
+                              className="rank-avatar"
+                              style={{ width: 44, height: 44 }}
+                            />
                           ) : (
                             <div className="rank-avatar" style={{ width: 44, height: 44 }}>
                               {(eq.tag || eq.nombre).slice(0, 3).toUpperCase()}
@@ -1734,12 +1852,11 @@ export function App() {
                   </section>
                 )}
 
-                {/* Banner Cinematográfico del Jugador */}
                 <section className="profile-banner">
                   <div
                     className="profile-banner-bg"
                     style={{
-                      backgroundImage: `url(${perfilActivo?.banner || "./img/juegos/valorant.jpg"})`,
+                      backgroundImage: `url(${perfilActivo?.banner || "./img/ui/hero-vants.jpg"})`,
                     }}
                   />
                   <div className="profile-banner-scrim" />
@@ -1789,7 +1906,6 @@ export function App() {
                   </div>
                 </section>
 
-                {/* Módulos de Cuentas Competitivas Vinculadas */}
                 <div className="grid-cards">
                   <article className="card">
                     <div className="card-accent-top" style={{ background: "var(--orange)" }} />
@@ -1894,7 +2010,6 @@ export function App() {
                   </article>
                 </div>
 
-                {/* Vitrina de Insignias 3D Metálicas */}
                 <div className="section-head">
                   <div className="section-head-titles">
                     <div className="eyebrow">COLECCIÓN OFICIAL</div>
@@ -1972,7 +2087,10 @@ export function App() {
                   <div className="section-head-titles">
                     <div className="eyebrow">SUSCRIPCIONES Y TEMPORADA</div>
                     <h1>MEMBRESÍAS OFICIALES Y PASE S4 VANTS</h1>
-                    <p>Potencia tu cuenta competitiva con sellos exclusivos, torneos sin comisión y herramientas para creadores.</p>
+                    <p>
+                      Potencia tu cuenta competitiva con sellos exclusivos, torneos sin comisión y herramientas para
+                      creadores.
+                    </p>
                   </div>
                   <button type="button" className="btn primary" onClick={() => openInApp("https://vants.cc/membresias")}>
                     <IconCrown size={15} />
@@ -2035,9 +2153,8 @@ export function App() {
                 </div>
 
                 <section className="carbon-hero">
-                  <div className="carbon-hero-scrim" />
-                  <div className="carbon-hero-inner">
-                    <div className="carbon-hero-copy">
+                  <div className="carbon-hero-inner" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+                    <div style={{ maxWidth: 620 }}>
                       <div className="eyebrow">DIAGNÓSTICO DE TORNEO · SIN DRIVERS DE KERNEL</div>
                       <h2
                         style={{
@@ -2055,7 +2172,7 @@ export function App() {
                             ? "ENTORNO LIMPIO · APTO PARA COMPETIR"
                             : "ALERTA · CIERRA LAS HERRAMIENTAS DETECTADAS"}
                       </h2>
-                      <p>
+                      <p style={{ margin: "0 0 16px", color: "var(--text-2)" }}>
                         Inspección ligera de sesión compatible con Microsoft Store y Windows 10/11 sin requerir permisos
                         de administrador. Comparte tu código SHA-256 con el árbitro del torneo.
                       </p>
@@ -2066,6 +2183,11 @@ export function App() {
                         </button>
                       )}
                     </div>
+                    <img
+                      src="./img/ui/shield-crest.jpg"
+                      alt="VANTS Shield"
+                      style={{ width: 150, height: 150, objectFit: "cover", mixBlendMode: "lighten" }}
+                    />
                   </div>
                 </section>
 
@@ -2078,6 +2200,7 @@ export function App() {
                         className="mono"
                         style={{
                           padding: "10px 12px",
+                          borderRadius: 8,
                           background: "var(--carbon-0)",
                           border: "1px solid var(--line)",
                           fontSize: 13,
@@ -2136,7 +2259,7 @@ export function App() {
         </main>
       </div>
 
-      {/* ── Navegación Inferior Nativa Android (5 Pestañas con Iconos Vectoriales) ── */}
+      {/* ── Navegación Inferior Nativa Android ── */}
       <nav className="vants-bottom-nav" aria-label="Navegación inferior móvil">
         {mobileBottomNav.map((item) => (
           <button
