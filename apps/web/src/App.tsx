@@ -126,6 +126,7 @@ interface PlanCard {
   id: string;
   nombre: string;
   badge: string;
+  sub: string;
   color: string;
   destacado?: boolean;
   beneficios: string[];
@@ -136,6 +137,7 @@ const PLANES_VANTS: PlanCard[] = [
     id: "pase",
     nombre: "PASE S4",
     badge: "TEMPORADA",
+    sub: "Tu pase de batalla competitivo",
     color: "#38bdf8",
     beneficios: [
       "Insignia oficial PLUS en tu perfil VANTS",
@@ -147,6 +149,7 @@ const PLANES_VANTS: PlanCard[] = [
     id: "pro",
     nombre: "VANTS PRO",
     badge: "MÁS POPULAR",
+    sub: "Máximo rendimiento competitivo",
     color: "#ff0d2e",
     destacado: true,
     beneficios: [
@@ -160,6 +163,7 @@ const PLANES_VANTS: PlanCard[] = [
     id: "creator",
     nombre: "VANTS CREATOR",
     badge: "CREADORES",
+    sub: "Crea, comparte y destaca",
     color: "#dce2ec",
     beneficios: [
       "Sello CREATOR y difusión automática en Discord",
@@ -171,6 +175,7 @@ const PLANES_VANTS: PlanCard[] = [
     id: "socio",
     nombre: "SOCIO VANTS",
     badge: "INVITACIÓN",
+    sub: "Apoya el proyecto, sé parte",
     color: "#f5c044",
     beneficios: [
       "Sello mítico SOCIO VANTS y voto en el circuito",
@@ -502,6 +507,7 @@ export function App() {
     }
   });
   const [streamFilter, setStreamFilter] = useState<"todos" | "vivo" | "twitch" | "kick">("todos");
+  const [searchStreams, setSearchStreams] = useState("");
   const [badgeFilter, setBadgeFilter] = useState<"todas" | "mias">("todas");
 
   // Sesión VANTS Identity, perfil, banner e insignias
@@ -717,8 +723,39 @@ export function App() {
       if (streamFilter === "twitch") return d.plataforma.toLowerCase() === "twitch";
       if (streamFilter === "kick") return d.plataforma.toLowerCase() === "kick";
       return true;
+    }).filter((d) => {
+      const q = searchStreams.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        d.nombre.toLowerCase().includes(q) ||
+        d.canal.toLowerCase().includes(q) ||
+        (d.juego || "").toLowerCase().includes(q) ||
+        (d.titulo || "").toLowerCase().includes(q)
+      );
     });
-  }, [directos, streamFilter]);
+  }, [directos, streamFilter, searchStreams]);
+
+  const topVivos = useMemo(
+    () => [...vivos].sort((a, b) => (b.espectadores || 0) - (a.espectadores || 0)).slice(0, 3),
+    [vivos],
+  );
+
+  const destacadoDirecto = useMemo(
+    () => filteredDirectos.find((d) => d.en_vivo) || null,
+    [filteredDirectos],
+  );
+
+  const restoDirectos = useMemo(
+    () => filteredDirectos.filter((d) => d !== destacadoDirecto),
+    [filteredDirectos, destacadoDirecto],
+  );
+
+  const yoRanking = useMemo(() => {
+    if (!perfilActivo) return null;
+    const idx = jugadores.findIndex((j) => j.pid === perfilActivo.pid);
+    if (idx === -1) return null;
+    return { j: jugadores[idx], pos: idx + 1 };
+  }, [jugadores, perfilActivo]);
 
   const filteredClips = useMemo(() => {
     if (clipFilter === "todos") return clipsComunidad;
@@ -2024,6 +2061,7 @@ export function App() {
                   <div className="section-head-titles">
                     <div className="eyebrow">TRANSMISIONES DEL CIRCUITO</div>
                     <h1>DIRECTOS TWITCH &amp; KICK ({vivos.length} EN VIVO)</h1>
+                    <p>Sigue a tus streamers favoritos de la comunidad VANTS en Twitch y Kick.</p>
                   </div>
                   <div className="btn-row">
                     <div className="carbon-tabs" role="tablist">
@@ -2047,51 +2085,178 @@ export function App() {
                         </button>
                       ))}
                     </div>
-                    <button type="button" className="btn sm" onClick={() => void refreshData()}>
+                    <div className="search-wrap">
+                      <IconSearch size={15} />
+                      <input
+                        id="streams-search"
+                        type="search"
+                        className="search-input"
+                        placeholder="Buscar streamers…"
+                        value={searchStreams}
+                        onChange={(e) => setSearchStreams(e.target.value)}
+                      />
+                    </div>
+                    <button type="button" className="btn sm" onClick={() => openInApp("https://vants.cc/entrar")}>
+                      <IconUserPlus size={14} />
+                      <span>CONECTAR CUENTAS</span>
+                    </button>
+                    <button type="button" className="btn primary sm" onClick={() => void refreshData()}>
                       <IconRefresh size={14} />
                       <span>ACTUALIZAR</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="grid-cards">
-                  {filteredDirectos.map((d) => (
-                    <article key={`${d.plataforma}:${d.canal}`} className="card media-card">
-                      <div className="media-thumb-wrap">
-                        {d.miniatura ? (
-                          <img src={d.miniatura} alt={d.nombre} className="media-thumb" loading="lazy" />
-                        ) : (
-                          <div className="media-thumb-fallback">
-                            <IconBroadcast size={28} />
+                {loading ? (
+                  <div className="empty-note">CARGANDO CANALES EN VIVO…</div>
+                ) : (
+                  <>
+                    {destacadoDirecto && (
+                      <div className="live-layout">
+                        <article className="live-featured">
+                          <div
+                            className="live-player"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openUrl(destacadoDirecto.url)}
+                            onKeyDown={(e) => e.key === "Enter" && openUrl(destacadoDirecto.url)}
+                          >
+                            {destacadoDirecto.miniatura ? (
+                              <img src={destacadoDirecto.miniatura} alt={destacadoDirecto.nombre} className="live-thumb" loading="lazy" />
+                            ) : (
+                              <div className="live-thumb-fallback">
+                                <IconBroadcast size={42} />
+                              </div>
+                            )}
+                            <div className="live-player-scrim" />
+                            <span className="live-badge">
+                              <IconLiveDot size={11} /> EN VIVO
+                            </span>
+                            {destacadoDirecto.espectadores != null && (
+                              <span className="live-viewers">
+                                <IconUsers size={13} /> {destacadoDirecto.espectadores}
+                              </span>
+                            )}
+                            <span className="live-play-ring">
+                              <IconPlay size={30} />
+                            </span>
                           </div>
-                        )}
-                        <div className="media-badge-tl">
-                          <span className={`tag ${d.en_vivo ? "red" : ""}`}>{d.en_vivo ? "EN VIVO" : "OFFLINE"}</span>
-                        </div>
-                        <span className="media-badge-br">
-                          {d.en_vivo && d.espectadores != null
-                            ? `${d.espectadores} ESPECTADORES`
-                            : d.plataforma.toUpperCase()}
-                        </span>
+                          <div className="live-meta">
+                            <div className="live-avatar">{destacadoDirecto.nombre.slice(0, 2).toUpperCase()}</div>
+                            <div className="live-meta-text">
+                              <h2 className="card-title">{destacadoDirecto.nombre}</h2>
+                              <p className="card-meta">
+                                {destacadoDirecto.titulo || destacadoDirecto.juego || "Transmisión en vivo de la comunidad VANTS"}
+                              </p>
+                              <div className="tag-row">
+                                <span className="tag">{destacadoDirecto.plataforma.toUpperCase()}</span>
+                                {destacadoDirecto.juego && <span className="tag red">{destacadoDirecto.juego}</span>}
+                              </div>
+                              <div className="btn-row">
+                                <button type="button" className="btn primary sm" onClick={() => openUrl(destacadoDirecto.url)}>
+                                  <span>VER EN {destacadoDirecto.plataforma.toUpperCase()}</span>
+                                  <IconExternal size={13} />
+                                </button>
+                                <button type="button" className="btn sm" onClick={() => openUrl(destacadoDirecto.url)}>
+                                  <IconHeart size={14} />
+                                  <span>SEGUIR</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+
+                        <aside className="live-top">
+                          <div className="live-top-head">
+                            <IconFlame size={15} />
+                            <span>TOP EN VIVO</span>
+                          </div>
+                          {topVivos.map((d, i) => (
+                            <div
+                              key={`${d.plataforma}:${d.canal}:top`}
+                              className="live-top-row"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => openUrl(d.url)}
+                              onKeyDown={(e) => e.key === "Enter" && openUrl(d.url)}
+                            >
+                              <span className={`live-top-pos ${i === 0 ? "gold" : ""}`}>{i + 1}</span>
+                              {d.miniatura ? (
+                                <img src={d.miniatura} alt="" className="live-top-avatar" loading="lazy" />
+                              ) : (
+                                <span className="live-top-avatar">{d.nombre.slice(0, 2).toUpperCase()}</span>
+                              )}
+                              <div className="live-top-info">
+                                <span className="live-top-nick">{d.nombre}</span>
+                                <span className="live-top-sub">{d.juego || d.plataforma.toUpperCase()}</span>
+                              </div>
+                              <span className="live-top-viewers">{d.espectadores != null ? d.espectadores : "—"}</span>
+                            </div>
+                          ))}
+                          {vivos.length > 3 && (
+                            <button type="button" className="live-top-more" onClick={() => setStreamFilter("vivo")}>
+                              <span>VER TODOS</span>
+                              <IconChevronRight size={13} />
+                            </button>
+                          )}
+                        </aside>
                       </div>
-                      <div className="media-body">
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                          <h2 className="card-title" style={{ fontSize: 18 }}>
-                            {d.nombre}
-                          </h2>
-                          <span className="tag">{d.plataforma.toUpperCase()}</span>
+                    )}
+
+                    {restoDirectos.length > 0 && (
+                      <>
+                        <div className="section-head slim">
+                          <div className="section-head-titles">
+                            <div className="eyebrow">CANALES EN VIVO</div>
+                            <h2>TODOS LOS DIRECTOS ({restoDirectos.length})</h2>
+                          </div>
                         </div>
-                        <p className="card-meta">{d.titulo || d.juego || "Canal verificado de la red VANTS"}</p>
-                        <div className="card-actions">
-                          <button type="button" className="btn primary sm" onClick={() => openUrl(d.url)}>
-                            <span>ABRIR TRANSMISIÓN</span>
-                            <IconExternal size={13} />
-                          </button>
+                        <div className="grid-cards">
+                          {restoDirectos.map((d) => (
+                            <article key={`${d.plataforma}:${d.canal}`} className="card media-card">
+                              <div className="media-thumb-wrap">
+                                {d.miniatura ? (
+                                  <img src={d.miniatura} alt={d.nombre} className="media-thumb" loading="lazy" />
+                                ) : (
+                                  <div className="media-thumb-fallback">
+                                    <IconBroadcast size={28} />
+                                  </div>
+                                )}
+                                <div className="media-badge-tl">
+                                  <span className={`tag ${d.en_vivo ? "red" : ""}`}>{d.en_vivo ? "EN VIVO" : "OFFLINE"}</span>
+                                </div>
+                                <span className="media-badge-br">
+                                  {d.en_vivo && d.espectadores != null
+                                    ? `${d.espectadores} ESPECTADORES`
+                                    : d.plataforma.toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="media-body">
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                                  <h2 className="card-title" style={{ fontSize: 18 }}>
+                                    {d.nombre}
+                                  </h2>
+                                  <span className="tag">{d.plataforma.toUpperCase()}</span>
+                                </div>
+                                <p className="card-meta">{d.titulo || d.juego || "Canal verificado de la red VANTS"}</p>
+                                <div className="card-actions">
+                                  <button type="button" className="btn primary sm" onClick={() => openUrl(d.url)}>
+                                    <span>ABRIR TRANSMISIÓN</span>
+                                    <IconExternal size={13} />
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
                         </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
+                      </>
+                    )}
+
+                    {!destacadoDirecto && restoDirectos.length === 0 && (
+                      <div className="empty-note">NO HAY CANALES EN VIVO AHORA MISMO. VUELVE A INTENTARLO MÁS TARDE.</div>
+                    )}
+                  </>
+                )}
               </>
             )}
 
@@ -2146,86 +2311,196 @@ export function App() {
                 </div>
 
                 {rankView === "jugadores" ? (
-                  <>
+                  <div className="rank-layout">
+                  <div className="rank-main">
                     {!searchRank.trim() && filteredJugadores.length >= 3 && (
                       <div className="podium-grid">
-                        {filteredJugadores.slice(0, 3).map((j, idx) => {
+                        {[1, 0, 2].map((idx) => {
+                          const j = filteredJugadores[idx];
+                          if (!j) return null;
                           const accent = idx === 0 ? "#f5c044" : idx === 1 ? "#dce2ec" : "#e08b56";
+                          const clase = idx === 0 ? "p1" : idx === 1 ? "p2" : "p3";
                           return (
                             <div
                               key={j.pid}
-                              className="podium-card"
+                              className={`podium-card ${clase}`}
                               onClick={() => {
                                 void cargarPerfilPorPid(j.pid);
                                 setTab("perfil");
                               }}
                             >
                               <div className="card-accent-top" style={{ background: accent }} />
+                              {idx === 0 && (
+                                <div className="podium-crown">
+                                  <IconCrown size={24} />
+                                </div>
+                              )}
                               <div className="podium-rank" style={{ color: accent }}>
                                 #{idx + 1}
                               </div>
                               {j.avatar ? (
-                                <img
-                                  src={j.avatar}
-                                  alt={j.nick}
-                                  className="rank-avatar"
-                                  style={{ width: 46, height: 46 }}
-                                />
+                                <img src={j.avatar} alt={j.nick} className="rank-avatar podium-avatar" loading="lazy" />
                               ) : (
-                                <div className="rank-avatar" style={{ width: 46, height: 46 }}>
-                                  {j.nick.slice(0, 2).toUpperCase()}
-                                </div>
+                                <div className="rank-avatar podium-avatar">{j.nick.slice(0, 2).toUpperCase()}</div>
                               )}
-                              <div style={{ minWidth: 0, flex: 1 }}>
+                              <div className="podium-info">
                                 <div className="rank-nick">
                                   <span>{j.nick}</span>
                                   {j.sello && <span className="tag gold">{j.sello}</span>}
                                 </div>
-                                <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                                  {j.elo != null ? `${j.elo} ELO · ` : ""}
-                                  {j.xp} XP
+                                <div className="podium-xp">{j.xp} XP</div>
+                                <div className="podium-elo">
+                                  {j.elo != null ? `${j.elo} ELO` : "SIN ELO"}
+                                  {j.nivel != null && <span className="tag ok">Lv. {j.nivel}</span>}
                                 </div>
                               </div>
+                              <span className="podium-ver">
+                                <span>VER PERFIL</span>
+                                <IconChevronRight size={13} />
+                              </span>
                             </div>
                           );
                         })}
                       </div>
                     )}
 
-                    <div className="rank-list">
-                      {filteredJugadores.map((j, idx) => (
-                        <div
-                          key={j.pid}
-                          className="rank-row"
-                          onClick={() => {
-                            void cargarPerfilPorPid(j.pid);
-                            setTab("perfil");
-                          }}
-                        >
-                          <div className="rank-pos">#{idx + 1}</div>
-                          {j.avatar ? (
-                            <img src={j.avatar} alt={j.nick} className="rank-avatar" loading="lazy" />
-                          ) : (
-                            <div className="rank-avatar">{j.nick.slice(0, 2).toUpperCase()}</div>
-                          )}
-                          <div className="rank-info">
-                            <div className="rank-nick">
-                              <span>{j.nick}</span>
-                              {j.sello && <span className="tag red">{j.sello}</span>}
-                              {j.fundador && <span className="tag gold">FUNDADOR</span>}
+                      <section className="rank-table">
+                        <div className="rank-table-head">
+                          <IconTrophy size={16} />
+                          <span>TOP {filteredJugadores.length} JUGADORES</span>
+                          <span className="rank-table-note">Toca una fila para inspeccionar banner e insignias</span>
+                        </div>
+                        <div className="rank-table-cols">
+                          <span>#</span>
+                          <span>JUGADOR</span>
+                          <span>XP</span>
+                          <span>ELO</span>
+                          <span>NIVEL</span>
+                        </div>
+                        <div className="rank-tbody">
+                          {filteredJugadores.map((j, idx) => (
+                            <div
+                              key={j.pid}
+                              className="rank-trow"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => {
+                                void cargarPerfilPorPid(j.pid);
+                                setTab("perfil");
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  void cargarPerfilPorPid(j.pid);
+                                  setTab("perfil");
+                                }
+                              }}
+                            >
+                              <span className={`rank-t-pos ${idx < 3 ? `m${idx + 1}` : ""}`}>{idx + 1}</span>
+                              {j.avatar ? (
+                                <img src={j.avatar} alt={j.nick} className="rank-avatar" loading="lazy" />
+                              ) : (
+                                <div className="rank-avatar">{j.nick.slice(0, 2).toUpperCase()}</div>
+                              )}
+                              <div className="rank-t-nick">
+                                <span>{j.nick}</span>
+                                {j.sello && <span className="tag red">{j.sello}</span>}
+                                {j.fundador && <span className="tag gold">FUNDADOR</span>}
+                              </div>
+                              <span className="rank-t-xp mono">{j.xp}</span>
+                              <span className="rank-t-elo mono">{j.elo != null ? j.elo : "—"}</span>
+                              <span className="rank-t-lvl">{j.nivel != null ? `Lv. ${j.nivel}` : "—"}</span>
                             </div>
-                            <div className="rank-sub">
-                              <span className="mono">{j.xp} XP</span> · Toca para inspeccionar banner e insignias
+                          ))}
+                        </div>
+                      </section>
+                    </div>
+
+                    <aside className="rank-side">
+                      <section className="rank-me">
+                        <div className="rank-me-head">
+                          <IconUser size={16} />
+                          <span>TU ESTADÍSTICAS</span>
+                        </div>
+                        {yoRanking ? (
+                          <>
+                            <div className="rank-me-row">
+                              {yoRanking.j.avatar ? (
+                                <img src={yoRanking.j.avatar} alt={yoRanking.j.nick} className="rank-avatar" loading="lazy" />
+                              ) : (
+                                <div className="rank-avatar">{yoRanking.j.nick.slice(0, 2).toUpperCase()}</div>
+                              )}
+                              <div className="rank-me-nick">
+                                <strong>{yoRanking.j.nick}</strong>
+                                <span>Posición #{yoRanking.pos} del ranking VANTS</span>
+                              </div>
+                              {yoRanking.j.nivel != null && <span className="tag gold">NIVEL {yoRanking.j.nivel}</span>}
                             </div>
+                            <div className="rank-me-stats">
+                              <div>
+                                <strong className="mono">{yoRanking.j.xp}</strong>
+                                <span>XP</span>
+                              </div>
+                              <div>
+                                <strong className="mono">{yoRanking.j.elo != null ? yoRanking.j.elo : "—"}</strong>
+                                <span>ELO</span>
+                              </div>
+                              <div>
+                                <strong className="mono">#{yoRanking.pos}</strong>
+                                <span>POSICIÓN</span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rank-me-empty">
+                            <p>Inicia sesión con VANTS Identity para ver tu XP, tu ELO y tu posición en el ranking global.</p>
+                            <button type="button" className="btn primary sm" onClick={() => setTab("perfil")}>
+                              <span>IR A MI PERFIL</span>
+                            </button>
                           </div>
-                          <div className="rank-metrics">
-                            {j.nivel != null && <span className="tag ok">LVL {j.nivel}</span>}
-                            {j.elo != null && <span>{j.elo} ELO</span>}
+                        )}
+                      </section>
+
+                      <section className="rank-global">
+                        <div className="rank-me-head">
+                          <IconPulse size={16} />
+                          <span>ESTADÍSTICAS GLOBALES</span>
+                        </div>
+                        <div className="rank-global-grid">
+                          <div>
+                            <strong>{jugadores.length}</strong>
+                            <span>Jugadores</span>
+                          </div>
+                          <div>
+                            <strong>11</strong>
+                            <span>Juegos</span>
+                          </div>
+                          <div>
+                            <strong>{vivos.length}</strong>
+                            <span>En vivo</span>
+                          </div>
+                          <div>
+                            <strong>24/7</strong>
+                            <span>Competitivo</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </>
+                      </section>
+
+                      <section
+                        className="rank-ranked"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openInApp("https://vants.cc/ranked")}
+                        onKeyDown={(e) => e.key === "Enter" && openInApp("https://vants.cc/ranked")}
+                      >
+                        <IconCrown size={22} />
+                        <div className="rank-ranked-text">
+                          <strong>VANTS RANKED</strong>
+                          <span>Compite, sube de nivel y demuestra tu talento.</span>
+                        </div>
+                        <IconChevronRight size={16} />
+                      </section>
+                    </aside>
+                  </div>
                 ) : (
                   <div className="grid-cards">
                     {equipos.map((eq) => (
@@ -2607,36 +2882,39 @@ export function App() {
             {/* ==================== PLANES & MEMBRESÍAS ==================== */}
             {tab === "planes" && (
               <>
-                <div className="section-head">
-                  <div className="section-head-titles">
-                    <div className="eyebrow">SUSCRIPCIONES Y TEMPORADA</div>
-                    <h1>MEMBRESÍAS OFICIALES Y PASE S4 VANTS</h1>
-                    <p>
-                      Potencia tu cuenta competitiva con sellos exclusivos, torneos sin comisión y herramientas para
-                      creadores.
-                    </p>
+                <section className="plans-hero">
+                  <div className="plans-hero-text">
+                    <div className="eyebrow">MEMBRESÍAS VANTS</div>
+                    <h2>
+                      Lleva tu experiencia <em>al siguiente nivel</em>
+                    </h2>
+                    <p>Planes exclusivos, insignias únicas y grandes beneficios.</p>
                   </div>
-                  <button type="button" className="btn primary" onClick={() => openInApp("https://vants.cc/membresias")}>
-                    <IconCrown size={15} />
-                    <span>GESTIONAR MEMBRESÍA</span>
-                  </button>
-                </div>
+                  <div className="plans-hero-art">
+                    <IconCrown size={76} />
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => openInApp("https://vants.cc/membresias")}
+                    >
+                      <IconCrown size={15} />
+                      <span>GESTIONAR MEMBRESÍA</span>
+                    </button>
+                  </div>
+                </section>
 
                 <div className="plans-grid">
                   {PLANES_VANTS.map((plan) => (
-                    <article
-                      key={plan.id}
-                      className="card"
-                      style={plan.destacado ? { borderColor: "var(--red)" } : undefined}
-                    >
-                      <div className="card-accent-top" style={{ background: plan.color }} />
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                        <h2 className="card-title" style={{ fontSize: 22 }}>
-                          {plan.nombre}
-                        </h2>
-                        <span className={`tag ${plan.destacado ? "red" : ""}`}>{plan.badge}</span>
+                    <article key={plan.id} className={`plan-card ${plan.destacado ? "featured" : ""}`}>
+                      {plan.destacado && <span className="plan-popular">MÁS POPULAR</span>}
+                      <div className="plan-art" style={{ color: plan.color }}>
+                        {plan.id === "pase" && <IconRocket size={34} />}
+                        {plan.id === "pro" && <IconCrown size={34} />}
+                        {plan.id === "creator" && <IconFilm size={34} />}
+                        {plan.id === "socio" && <IconUsers size={34} />}
                       </div>
-
+                      <h2 className="plan-name">{plan.nombre}</h2>
+                      <p className="plan-sub">{plan.sub}</p>
                       <ul className="plan-list">
                         {plan.beneficios.map((b) => (
                           <li key={b}>
@@ -2645,19 +2923,89 @@ export function App() {
                           </li>
                         ))}
                       </ul>
-
-                      <div className="card-actions">
-                        <button
-                          type="button"
-                          className={`btn ${plan.destacado ? "primary" : ""}`}
-                          style={{ width: "100%" }}
-                          onClick={() => openInApp("https://vants.cc/membresias")}
-                        >
-                          <span>ACTIVAR {plan.nombre}</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        className={`btn ${plan.destacado ? "primary" : ""} plan-btn`}
+                        onClick={() => openInApp("https://vants.cc/membresias")}
+                      >
+                        <span>ACTIVAR {plan.nombre}</span>
+                        <IconChevronRight size={14} />
+                      </button>
                     </article>
                   ))}
+                </div>
+
+                <div className="plans-extra">
+                  <section className="plan-extra-card">
+                    <div className="plan-extra-head">
+                      <IconStar size={16} />
+                      <span>BENEFICIOS DESTACADOS</span>
+                    </div>
+                    <div className="plan-benefits-grid">
+                      <div>
+                        <IconCrown size={22} />
+                        <span>Insignias exclusivas</span>
+                      </div>
+                      <div>
+                        <IconBolt size={22} />
+                        <span>Acceso prioritario</span>
+                      </div>
+                      <div>
+                        <IconTrophy size={22} />
+                        <span>Torneos especiales</span>
+                      </div>
+                      <div>
+                        <IconGamepad size={22} />
+                        <span>Descuentos en la tienda</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="plan-extra-card">
+                    <div className="plan-extra-head">
+                      <IconUser size={16} />
+                      <span>TU MEMBRESÍA ACTUAL</span>
+                    </div>
+                    <div className="plan-mine">
+                      <IconCrown size={26} />
+                      <div>
+                        <strong>{perfilActivo?.sello || "PLAN GRATUITO"}</strong>
+                        <span>
+                          {perfilActivo?.sello
+                            ? "Sello activo en tu perfil VANTS."
+                            : "Activa un plan y desbloquea sellos, Shorts SEO y 0% de comisión."}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={`btn sm ${perfilActivo?.sello ? "" : "primary"}`}
+                        onClick={() => openInApp("https://vants.cc/membresias")}
+                      >
+                        <span>{perfilActivo?.sello ? "GESTIONAR" : "VER PLANES"}</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="plan-extra-card">
+                    <div className="plan-extra-head">
+                      <IconHeadset size={16} />
+                      <span>¿TIENES DUDAS?</span>
+                    </div>
+                    <div className="plan-mine">
+                      <IconHeadset size={26} />
+                      <div>
+                        <strong>Soporte VANTS</strong>
+                        <span>Escríbenos a contacto@vants.cc y el equipo te responde.</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn sm"
+                        onClick={() => openUrl("mailto:contacto@vants.cc")}
+                      >
+                        <span>IR A SOPORTE</span>
+                      </button>
+                    </div>
+                  </section>
                 </div>
               </>
             )}
