@@ -2,11 +2,19 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BadgeEmblem,
   IconBolt,
+  IconBookmark,
+  IconChevronLeft,
+  IconChevronRight,
+  IconFlame,
+  IconGlobe,
+  IconHeart,
+  IconVideoCam,
   IconBroadcast,
   IconCalendar,
   IconCheck,
   IconClapper,
   IconCopy,
+  IconCrosshair,
   IconCrown,
   IconDiscord,
   IconExternal,
@@ -60,6 +68,56 @@ import {
   type PerfilPublicoData,
   type ShieldReport,
 } from "./lib/vantsApi";
+
+type ClipsPcTab = "mis" | "comunidad" | "destacados" | "favoritos";
+
+interface ClipView {
+  id: string;
+  title: string;
+  game: string;
+  gameKey: string | null;
+  author: string;
+  when: string;
+  ts: number;
+  thumb: string | null;
+  source: "local" | "comunidad";
+  badge: string;
+  onPlay: () => void;
+}
+
+const CLIP_GAME_FILTERS: { id: string; label: string }[] = [
+  { id: "todos", label: "Todos" },
+  { id: "valorant", label: "Valorant" },
+  { id: "cs2", label: "CS2" },
+  { id: "fortnite", label: "Fortnite" },
+  { id: "lol", label: "LoL" },
+  { id: "warzone", label: "Warzone" },
+];
+
+function clipGameKey(raw: string): string | null {
+  const g = (raw || "").toLowerCase();
+  if (g.includes("valorant")) return "valorant";
+  if (g.includes("cs2") || g.includes("counter")) return "cs2";
+  if (g.includes("fortnite")) return "fortnite";
+  if (g.includes("league") || g === "lol") return "lol";
+  if (g.includes("warzone") || g.includes("call of duty")) return "warzone";
+  if (g.includes("fc") || g.includes("fifa")) return "fc27";
+  return null;
+}
+
+function timeAgoEs(ts: number): string {
+  if (!ts || Number.isNaN(ts)) return "reciente";
+  const diff = Math.max(0, Date.now() - ts);
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "hace un momento";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `hace ${d} ${d === 1 ? "día" : "días"}`;
+  const mo = Math.floor(d / 30);
+  return `hace ${mo} ${mo === 1 ? "mes" : "meses"}`;
+}
 
 type TabId = "inicio" | "juegos" | "clips" | "directos" | "ranking" | "perfil" | "planes" | "shield";
 type GameCategory = "todos" | "fps" | "royale" | "moba";
@@ -430,6 +488,19 @@ export function App() {
   const [searchRank, setSearchRank] = useState("");
   const [rankView, setRankView] = useState<"jugadores" | "equipos">("jugadores");
   const [clipFilter, setClipFilter] = useState("todos");
+  const [clipsTab, setClipsTab] = useState<ClipsPcTab>("mis");
+  const [clipQuery, setClipQuery] = useState("");
+  const [clipSort, setClipSort] = useState<"recientes" | "antiguos">("recientes");
+  const [featOffset, setFeatOffset] = useState(0);
+  const [clipFavs, setClipFavs] = useState<string[]>(() => {
+    try {
+      const raw = window.localStorage.getItem("vants.clipFavs");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.map(String) : [];
+    } catch {
+      return [];
+    }
+  });
   const [streamFilter, setStreamFilter] = useState<"todos" | "vivo" | "twitch" | "kick">("todos");
   const [badgeFilter, setBadgeFilter] = useState<"todas" | "mias">("todas");
 
@@ -661,6 +732,93 @@ export function App() {
     }
     return catalogBadges;
   }, [catalogBadges, badgeFilter, misInsignias]);
+
+  const toggleClipFav = (id: string) => {
+    setClipFavs((curr) => {
+      const next = curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id];
+      try {
+        window.localStorage.setItem("vants.clipFavs", JSON.stringify(next));
+      } catch {
+        /* almacenamiento no disponible */
+      }
+      return next;
+    });
+  };
+
+  const localClipViews = useMemo<ClipView[]>(
+    () =>
+      localClips.map((c) => ({
+        id: `local:${c.path}`,
+        title: c.name.replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[_]+/g, " "),
+        game: c.game,
+        gameKey: clipGameKey(c.game),
+        author: `${c.sizeMb} MB`,
+        when: timeAgoEs(c.mtimeMs),
+        ts: c.mtimeMs,
+        thumb: null,
+        source: "local" as const,
+        badge: "LOCAL",
+        onPlay: () => void desktop?.openClipFile(c.path),
+      })),
+    [localClips, desktop],
+  );
+
+  const communityClipViews = useMemo<ClipView[]>(
+    () =>
+      clipsComunidad.map((c) => {
+        const ts = c.creado ? Date.parse(c.creado) : 0;
+        return {
+          id: `com:${c.id}`,
+          title: c.titulo,
+          game: c.juego,
+          gameKey: clipGameKey(c.juego),
+          author: c.autor || "Competidor VANTS",
+          when: ts ? timeAgoEs(ts) : "Comunidad",
+          ts: ts || 0,
+          thumb: c.miniatura,
+          source: "comunidad" as const,
+          badge: (c.plataforma || "").toUpperCase(),
+          onPlay: () => openUrl(c.url),
+        };
+      }),
+    [clipsComunidad],
+  );
+
+  const allClipViews = useMemo(() => [...localClipViews, ...communityClipViews], [localClipViews, communityClipViews]);
+  const featuredClipViews = communityClipViews.length ? communityClipViews : localClipViews;
+
+  const clipsPcList = useMemo(() => {
+    let base: ClipView[];
+    if (clipsTab === "mis") base = localClipViews;
+    else if (clipsTab === "comunidad") base = communityClipViews;
+    else if (clipsTab === "destacados") base = featuredClipViews.slice(0, 12);
+    else base = allClipViews.filter((c) => clipFavs.includes(c.id));
+    const q = clipQuery.trim().toLowerCase();
+    const filtered = base.filter(
+      (c) =>
+        (clipFilter === "todos" || c.gameKey === clipFilter) &&
+        (!q || c.title.toLowerCase().includes(q) || c.game.toLowerCase().includes(q) || c.author.toLowerCase().includes(q)),
+    );
+    return [...filtered].sort((a, b) => (clipSort === "recientes" ? b.ts - a.ts : a.ts - b.ts));
+  }, [clipsTab, localClipViews, communityClipViews, featuredClipViews, allClipViews, clipFavs, clipQuery, clipFilter, clipSort]);
+
+  const handleRecordClip = () => {
+    showToast("Graba con Win+Alt+R (Xbox Game Bar) o Razer Cortex · VANTS detecta tu clip automáticamente.");
+    void scanLocalClips();
+  };
+
+  const renderClipThumb = (c: ClipView) => {
+    const poster = c.gameKey ? `./img/juegos/poster-${c.gameKey}.jpg` : null;
+    return c.thumb ? (
+      <img src={c.thumb} alt={c.title} className="clips-thumb-img" loading="lazy" />
+    ) : poster ? (
+      <img src={poster} alt={c.title} className="clips-thumb-img poster" loading="lazy" />
+    ) : (
+      <div className="clips-thumb-fallback">
+        <IconFilm size={26} />
+      </div>
+    );
+  };
 
   const handleRefreshGames = () => {
     if (refreshingGames) return;
@@ -1473,8 +1631,258 @@ export function App() {
               </>
             )}
 
+            {/* ==================== CLIPS PC (diseño modular) ==================== */}
+            {tab === "clips" && isPc && (
+              <div className="clips-pc">
+                <section className="clips-banner">
+                  <img src="./img/ui/hero-vants.jpg" alt="" className="clips-banner-bg" />
+                  <div className="clips-banner-scrim" />
+                  <div className="clips-banner-copy">
+                    <div className="clips-banner-icon">
+                      <IconClapper size={34} />
+                    </div>
+                    <div>
+                      <h1 className="clips-title">Clips PC</h1>
+                      <p>Tus mejores jugadas, en un solo lugar</p>
+                    </div>
+                  </div>
+                  <div className="clips-banner-actions">
+                    <button type="button" className="clips-record-btn" onClick={handleRecordClip}>
+                      <IconVideoCam size={16} />
+                      <span>Grabar Clip</span>
+                    </button>
+                    <button type="button" className="clips-config-btn" onClick={() => setTab("perfil")}>
+                      <IconGear size={16} />
+                      <span>Configuración</span>
+                    </button>
+                  </div>
+                </section>
+
+                <div className="clips-tabs-row">
+                  <div className="clips-tabs" role="tablist">
+                    {(
+                      [
+                        { id: "mis", label: "Mis Clips", icon: <IconUser size={15} /> },
+                        { id: "comunidad", label: "Comunidad", icon: <IconGlobe size={15} /> },
+                        { id: "destacados", label: "Destacados", icon: <IconStar size={15} /> },
+                        { id: "favoritos", label: "Favoritos", icon: <IconHeart size={15} /> },
+                      ] as { id: ClipsPcTab; label: string; icon: ReactNode }[]
+                    ).map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={clipsTab === t.id}
+                        className={`clips-tab ${clipsTab === t.id ? "active" : ""}`}
+                        onClick={() => setClipsTab(t.id)}
+                      >
+                        {t.icon}
+                        <span>{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <label className="clips-search">
+                    <IconSearch size={15} />
+                    <input
+                      type="search"
+                      placeholder="Buscar clips..."
+                      value={clipQuery}
+                      onChange={(e) => setClipQuery(e.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className="clips-top-split">
+                  <section className="clips-detect">
+                    <div className="clips-detect-head">
+                      <IconCrosshair size={26} style={{ color: "var(--red)" }} />
+                      <div>
+                        <div className="clips-detect-title">Detección Automática</div>
+                        <div className="clips-detect-ok">
+                          <IconCheck size={12} /> {scanningClips ? "Escaneando…" : "Activa"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="clips-detect-body">
+                      <div>
+                        <div className="clips-detect-label">Capturas encontradas</div>
+                        <div className="clips-detect-count">{localClips.length}</div>
+                      </div>
+                      <div
+                        className="clips-detect-preview"
+                        onClick={() => (localClipViews[0] ? localClipViews[0].onPlay() : void scanLocalClips())}
+                      >
+                        {localClipViews[0] ? renderClipThumb(localClipViews[0]) : <div className="clips-thumb-fallback" />}
+                        <span className="clips-corner tl" />
+                        <span className="clips-corner tr" />
+                        <span className="clips-corner bl" />
+                        <span className="clips-corner br" />
+                        <span className="clips-play-dot">
+                          <IconPlay size={14} />
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="clips-detect-btn"
+                      onClick={() => {
+                        setClipsTab("mis");
+                        void scanLocalClips();
+                      }}
+                    >
+                      Ver clips detectados →
+                    </button>
+                  </section>
+
+                  <section className="clips-featured">
+                    <div className="clips-section-head">
+                      <h2>
+                        <IconFlame size={18} style={{ color: "var(--red)" }} />
+                        <span>Clips Destacados</span>
+                      </h2>
+                      <button type="button" className="clips-link" onClick={() => setClipsTab("destacados")}>
+                        Ver todos →
+                      </button>
+                    </div>
+                    {featuredClipViews.length === 0 ? (
+                      <div className="clips-empty">Aún no hay clips destacados. ¡Sube el primero!</div>
+                    ) : (
+                      <div className="clips-featured-wrap">
+                        <button
+                          type="button"
+                          className="clips-arrow left"
+                          aria-label="Anterior"
+                          onClick={() => setFeatOffset((o) => Math.max(0, o - 1))}
+                          disabled={featOffset === 0}
+                        >
+                          <IconChevronLeft size={16} />
+                        </button>
+                        <div className="clips-featured-grid">
+                          {featuredClipViews.slice(featOffset, featOffset + 4).map((c) => (
+                            <article key={c.id} className="clips-card feat" onClick={c.onPlay}>
+                              <div className="clips-thumb">
+                                {renderClipThumb(c)}
+                                <span className="clips-badge-br">{c.badge}</span>
+                                <span className="clips-play-dot">
+                                  <IconPlay size={14} />
+                                </span>
+                              </div>
+                              <div className="clips-card-body">
+                                <div className="clips-card-title">{c.title}</div>
+                                <div className="clips-card-meta">
+                                  <span>{c.author}</span>
+                                  <span>{c.when}</span>
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="clips-arrow right"
+                          aria-label="Siguiente"
+                          onClick={() => setFeatOffset((o) => Math.min(Math.max(0, featuredClipViews.length - 4), o + 1))}
+                          disabled={featOffset >= featuredClipViews.length - 4}
+                        >
+                          <IconChevronRight size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </section>
+                </div>
+
+                <section className="clips-latest">
+                  <div className="clips-section-head">
+                    <h2>
+                      <IconClapper size={18} style={{ color: "var(--red)" }} />
+                      <span>Últimos Clips</span>
+                    </h2>
+                    <div className="clips-filters">
+                      {CLIP_GAME_FILTERS.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          className={`clips-pill ${clipFilter === f.id ? "active" : ""}`}
+                          onClick={() => setClipFilter(f.id)}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                      <select
+                        className="clips-sort"
+                        value={clipSort}
+                        onChange={(e) => setClipSort(e.target.value as "recientes" | "antiguos")}
+                        aria-label="Ordenar clips"
+                      >
+                        <option value="recientes">Más recientes</option>
+                        <option value="antiguos">Más antiguos</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {clipsPcList.length === 0 ? (
+                    <div className="clips-empty big">
+                      {clipsTab === "mis" ? (
+                        <>
+                          <div>
+                            No hay grabaciones locales detectadas. Rutas monitorizadas:{" "}
+                            <span className="mono">
+                              {localFolders.length
+                                ? localFolders.join(" · ")
+                                : "Videos/VALORANT · Videos/CS2 · Videos/Captures · Razer Cortex/GameClips"}
+                            </span>
+                          </div>
+                          <button type="button" className="clips-link" onClick={() => setClipsTab("comunidad")}>
+                            Ver clips de la comunidad →
+                          </button>
+                        </>
+                      ) : clipsTab === "favoritos" ? (
+                        "Aún no tienes favoritos. Marca clips con el icono de guardar."
+                      ) : (
+                        "No hay clips para este filtro. Prueba con otro juego o búsqueda."
+                      )}
+                    </div>
+                  ) : (
+                    <div className="clips-grid">
+                      {clipsPcList.slice(0, 16).map((c) => (
+                        <article key={c.id} className="clips-card" onClick={c.onPlay}>
+                          <div className="clips-thumb">
+                            {renderClipThumb(c)}
+                            <span className="clips-badge-br">{c.badge}</span>
+                            <span className="clips-play-dot">
+                              <IconPlay size={16} />
+                            </span>
+                          </div>
+                          <div className="clips-card-body row">
+                            <div className="clips-card-main">
+                              <div className="clips-card-title">{c.title}</div>
+                              <div className="clips-card-meta">
+                                <span>{c.game || c.author}</span>
+                                <span>{c.when}</span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className={`clips-fav ${clipFavs.includes(c.id) ? "on" : ""}`}
+                              aria-label="Guardar en favoritos"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleClipFav(c.id);
+                              }}
+                            >
+                              <IconBookmark size={16} />
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            )}
+
             {/* ==================== CLIPS ==================== */}
-            {tab === "clips" && (
+            {tab === "clips" && !isPc && (
               <>
                 {isPc && (
                   <>

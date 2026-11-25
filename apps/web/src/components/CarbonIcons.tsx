@@ -467,3 +467,61 @@ export function IconHeadset(props: IconProps) {
     </BaseSvg>
   );
 }
+
+export function IconBookmark(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4.5L5 21V4a1 1 0 0 1 1-1z" />
+    </BaseSvg>
+  );
+}
+
+export function IconChevronLeft(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <path d="M15 5l-7 7 7 7" />
+    </BaseSvg>
+  );
+}
+
+export function IconChevronRight(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <path d="M9 5l7 7-7 7" />
+    </BaseSvg>
+  );
+}
+
+export function IconVideoCam(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <rect x="2.5" y="6" width="13" height="12" rx="2.5" />
+      <path d="M15.5 10.5L21.5 7v10l-6-3.5" />
+    </BaseSvg>
+  );
+}
+
+export function IconFlame(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.2 2-4.2.2 1.2.9 2 1.7 2.4C10.2 8.2 10.8 5.2 12 3z" />
+    </BaseSvg>
+  );
+}
+
+export function IconGlobe(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" />
+    </BaseSvg>
+  );
+}
+
+export function IconHeart(props: IconProps) {
+  return (
+    <BaseSvg {...props}>
+      <path d="M12 20s-7.5-4.6-9-9.5C2 7 4.2 4.5 7 4.5c1.9 0 3.5 1 5 3 1.5-2 3.1-3 5-3 2.8 0 5 2.5 4 6C19.5 15.4 12 20 12 20z" />
+    </BaseSvg>
+  );
+}
