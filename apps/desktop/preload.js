@@ -23,8 +23,15 @@ const desktopApi = {
   openClipFile: (filePath) => ipcRenderer.invoke('vants:open-clip', String(filePath || '')),
   revealClipFolder: (filePath) => ipcRenderer.invoke('vants:reveal-clip', String(filePath || '')),
 
-  // VANTS Shield (verificación de integridad competitiva en modo usuario)
+  // VANTS Shield (verificación de integridad competitiva + heartbeat firmado 30s)
   runShieldCheck: () => ipcRenderer.invoke('vants:shield-check'),
+  startShieldHeartbeat: (payload) => ipcRenderer.invoke('vants:shield-start-heartbeat', payload || {}),
+  stopShieldHeartbeat: () => ipcRenderer.invoke('vants:shield-stop-heartbeat'),
+  onShieldHeartbeat: (listener) => {
+    const handler = (_evt, state) => listener(state);
+    ipcRenderer.on('vants:shield-heartbeat', handler);
+    return () => ipcRenderer.removeListener('vants:shield-heartbeat', handler);
+  },
 
   // Versión y auto-actualización vía GitHub Releases (electron-updater)
   getAppVersion: () => ipcRenderer.invoke('banter:app-version'),

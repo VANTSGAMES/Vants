@@ -695,6 +695,26 @@ export function App() {
     return undefined;
   }, [desktop]);
 
+  // Puente VANTS Sentinel AI: envía heartbeat firmado HMAC cada 30s durante la sesión en VANTS PC
+  useEffect(() => {
+    if (!desktop || !desktop.startShieldHeartbeat) return undefined;
+    if (!session?.token) {
+      void desktop.stopShieldHeartbeat?.();
+      return undefined;
+    }
+    const offHb = desktop.onShieldHeartbeat?.((state) => {
+      if (state.shieldReport) setShieldReport(state.shieldReport);
+    });
+    void desktop.startShieldHeartbeat({
+      accessToken: session.token,
+      nick: session.user?.name,
+    });
+    return () => {
+      offHb?.();
+      void desktop.stopShieldHeartbeat?.();
+    };
+  }, [desktop, session?.token, session?.user?.name]);
+
   // Auto-rotación suave del Hero Banner (pausable al cambiar de pestaña)
   useEffect(() => {
     if (tab !== "inicio") return undefined;

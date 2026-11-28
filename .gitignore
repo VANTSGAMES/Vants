@@ -11,3 +11,5 @@ apps/desktop/release/
 
 !apps/desktop/build/
 !apps/desktop/build/*
+
+apps/desktop/.ac-config.json

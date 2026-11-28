@@ -45,10 +45,19 @@ jobs:
 
       - name: Generar instalador Windows NSIS (VANTS-Setup.exe)
         shell: pwsh
+        env:
+          VANTS_PC_AC_SECRET: ${{ secrets.VANTS_PC_AC_SECRET }}
         run: |
           $v = "${{ steps.ver.outputs.version }}"
-          npm --workspace=@banter/desktop version $v --no-git-tag-version --allow-same-version
-          npm --workspace=@banter/desktop run dist:win
+          if (-not [string]::IsNullOrWhiteSpace($env:VANTS_PC_AC_SECRET)) {
+            @{ acSecret = $env:VANTS_PC_AC_SECRET } | ConvertTo-Json -Compress | Set-Content -Encoding utf8 "apps/desktop/.ac-config.json"
+          }
+          try {
+            npm --workspace=@banter/desktop version $v --no-git-tag-version --allow-same-version
+            npm --workspace=@banter/desktop run dist:win
+          } finally {
+            if (Test-Path "apps/desktop/.ac-config.json") { Remove-Item "apps/desktop/.ac-config.json" -Force }
+          }
 
       - name: Calcular SHA-256 y generar manifiestos oficiales WinGet (VANTSGAMES.Banter)
         shell: pwsh

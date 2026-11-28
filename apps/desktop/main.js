@@ -24,23 +24,28 @@ try {
   autoUpdater = null;
 }
 
+const {
+  OFFICIAL_ANTICHEATS,
+  FLAGGED_TOOLS,
+  HEARTBEAT_INTERVAL_MS,
+  sendSignedAcHeartbeat,
+} = require('./shieldHeartbeat');
+
+function loadAcSecret() {
+  if (process.env.VANTS_PC_AC_SECRET) return String(process.env.VANTS_PC_AC_SECRET).trim();
+  try {
+    const cfgPath = path.join(__dirname, '.ac-config.json');
+    if (fs.existsSync(cfgPath)) {
+      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      if (cfg && cfg.acSecret) return String(cfg.acSecret).trim();
+    }
+  } catch {
+    // sin configuración local
+  }
+  return '';
+}
+
 const VIDEO_EXTS = new Set(['.mp4', '.mkv', '.mov', '.ts', '.m4v', '.webm']);
-
-const OFFICIAL_ANTICHEATS = [
-  { id: 'vanguard', name: 'Riot Vanguard', procs: ['vgtray.exe', 'vgc.exe'] },
-  { id: 'faceit', name: 'FACEIT Anti-Cheat', procs: ['faceitclient.exe', 'faceitservice.exe'] },
-  { id: 'eac', name: 'Easy Anti-Cheat', procs: ['easyanticheat.exe', 'easyanticheat_eos.exe'] },
-  { id: 'battleye', name: 'BattlEye', procs: ['beservice.exe'] },
-];
-
-const FLAGGED_TOOLS = [
-  { label: 'Cheat Engine', match: /^cheatengine/i },
-  { label: 'x64dbg / x32dbg', match: /^x(64|32)dbg\.exe$/i },
-  { label: 'OllyDbg', match: /^ollydbg\.exe$/i },
-  { label: 'Process Hacker / System Informer', match: /^(processhacker|systeminformer)\.exe$/i },
-  { label: 'DLL Injector', match: /(extreme.?injector|gh_injector|process.?injector)/i },
-  { label: 'ArtMoney / WeMod', match: /^(artmoney|wemod)/i },
-];
 
 const GAME_URIS = {
   cs2: 'steam://rungameid/730',
@@ -333,18 +338,37 @@ function listUserProcesses() {
   });
 }
 
+function queryWindowsServiceRunning(serviceName) {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') return resolve(false);
+    execFile('sc', ['query', serviceName], { timeout: 3000 }, (err, stdout) => {
+      if (err || !stdout) return resolve(false);
+      resolve(/STATE\s*:\s*4\s+RUNNING/i.test(String(stdout)));
+    });
+  });
+}
+
 async function runVantsShieldCheck() {
   const procs = await listUserProcesses();
   const procSet = new Set(procs);
-  const activeAntiCheats = OFFICIAL_ANTICHEATS.filter((ac) => ac.procs.some((p) => procSet.has(p))).map((ac) => ({
-    id: ac.id,
-    name: ac.name,
-  }));
+  const activeAntiCheats = [];
+  for (const ac of OFFICIAL_ANTICHEATS) {
+    let running = ac.procs.some((p) => procSet.has(p));
+    if (!running && process.platform === 'win32' && Array.isArray(ac.services)) {
+      for (const svc of ac.services) {
+        if (await queryWindowsServiceRunning(svc)) {
+          running = true;
+          break;
+        }
+      }
+    }
+    if (running) activeAntiCheats.push({ id: ac.id, name: ac.name });
+  }
   const flaggedTools = [];
   for (const proc of procs) {
     for (const rule of FLAGGED_TOOLS) {
       if (rule.match.test(proc)) {
-        flaggedTools.push({ label: rule.label, process: proc });
+        flaggedTools.push({ label: rule.label, process: proc, hardFlag: rule.hardFlag });
         break;
       }
     }
@@ -380,8 +404,58 @@ async function runVantsShieldCheck() {
   };
 }
 
-// ── IPC: VANTS Shield (verificación de integridad en modo usuario) ───────────
+let acHeartbeatTimer = null;
+let acHeartbeatConfig = null;
+
+function stopAcHeartbeatLoop() {
+  if (acHeartbeatTimer) {
+    clearInterval(acHeartbeatTimer);
+    acHeartbeatTimer = null;
+  }
+  acHeartbeatConfig = null;
+}
+
+async function runAcHeartbeatOnce() {
+  if (!acHeartbeatConfig || !acHeartbeatConfig.accessToken) return { ok: false, error: 'sin_sesion' };
+  const report = await runVantsShieldCheck();
+  const res = await sendSignedAcHeartbeat({
+    accessToken: acHeartbeatConfig.accessToken,
+    acSecret: loadAcSecret(),
+    shieldReport: report,
+    torneoId: acHeartbeatConfig.torneoId || null,
+    nick: acHeartbeatConfig.nick || null,
+  }).catch((err) => ({ ok: false, error: String((err && err.message) || err) }));
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('vants:shield-heartbeat', { ...res, shieldReport: report });
+  }
+  return res;
+}
+
+// ── IPC: VANTS Shield (verificación de integridad + heartbeat firmado cada 30s) ──
 ipcMain.handle('vants:shield-check', () => runVantsShieldCheck());
+ipcMain.handle('vants:shield-start-heartbeat', async (_evt, payload) => {
+  const token = String((payload && payload.accessToken) || '').trim();
+  if (!token) {
+    stopAcHeartbeatLoop();
+    return { ok: false, error: 'sin_sesion' };
+  }
+  stopAcHeartbeatLoop();
+  acHeartbeatConfig = {
+    accessToken: token,
+    torneoId: payload && payload.torneoId ? String(payload.torneoId) : null,
+    nick: payload && payload.nick ? String(payload.nick) : null,
+  };
+  const first = await runAcHeartbeatOnce();
+  acHeartbeatTimer = setInterval(() => {
+    void runAcHeartbeatOnce();
+  }, HEARTBEAT_INTERVAL_MS);
+  return { ok: true, intervalMs: HEARTBEAT_INTERVAL_MS, initial: first };
+});
+ipcMain.handle('vants:shield-stop-heartbeat', () => {
+  stopAcHeartbeatLoop();
+  return { ok: true };
+});
 
 // ── IPC: Versión y auto-actualización ────────────────────────────────────────
 ipcMain.handle('banter:app-version', () => ({ version: app.getVersion(), packaged: app.isPackaged }));
@@ -416,5 +490,6 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  stopAcHeartbeatLoop();
   if (process.platform !== 'darwin') app.quit();
 });

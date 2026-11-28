@@ -78,6 +78,9 @@ export interface VantsDesktopBridge {
   openClipFile: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
   revealClipFolder: (filePath: string) => Promise<{ ok: boolean; error?: string }>;
   runShieldCheck: () => Promise<ShieldReport>;
+  startShieldHeartbeat?: (payload: { accessToken: string; torneoId?: string; nick?: string }) => Promise<{ ok: boolean; intervalMs?: number; error?: string }>;
+  stopShieldHeartbeat?: () => Promise<{ ok: boolean }>;
+  onShieldHeartbeat?: (listener: (state: { ok: boolean; ac?: { badge?: string; vanguard_on?: boolean; faceit_ac_on?: boolean }; updatedAt?: string; error?: string; shieldReport?: ShieldReport }) => void) => () => void;
   getAppVersion: () => Promise<{ version: string; packaged: boolean }>;
   checkForUpdates: () => Promise<{ supported: boolean; currentVersion?: string; latestVersion?: string | null; error?: string }>;
   installUpdate: () => Promise<{ ok: boolean }>;
